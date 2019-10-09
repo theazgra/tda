@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstring>
 #include "Stopwatch.h"
+#include "automata.h"
 
 #define CHAR_COUNT 256
 using namespace std;
@@ -153,48 +154,50 @@ std::vector<size_t> knuth_morris_pratt(const string_view &text, const string_vie
 
 int main(int argc, char **argv)
 {
-    if (argc < 3)
-    {
-        fprintf(stdout, "[text file] [pattern]\n");
-        return 1;
-    }
-    auto text = read_file(argv[1]);
-    string_view pattern = argv[2];
+//    if (argc < 3)
+//    {
+//        fprintf(stdout, "[text file] [pattern]\n");
+//        return 1;
+//    }
+//    auto text = read_file(argv[1]);
+//    string_view pattern = argv[2];
+//
+//    azgra::Stopwatch stopwatch;
+//
+//    auto bfStopwatch = stopwatch.start_new_stopwatch();
+//    auto bruteForce = brute_force(text, pattern);
+//    stopwatch.stop(bfStopwatch);
+//
+//    auto hrsplStopwatch = stopwatch.start_new_stopwatch();
+//    auto hrspl = horspool(text, pattern);
+//    stopwatch.stop(hrsplStopwatch);
+//
+//    auto kmpStopwatch = stopwatch.start_new_stopwatch();
+//    auto kmp = knuth_morris_pratt(text, pattern);
+//    stopwatch.stop(kmpStopwatch);
+//
+//    fprintf(stdout, "Brute force: %lu  [%.5f ms]\n", bruteForce.size(), stopwatch.elapsed_milliseconds(bfStopwatch));
+//    for (const size_t index : bruteForce)
+//    {
+//        fprintf(stdout, "%lu, ", index);
+//    }
+//    fprintf(stdout, "\n");
+//
+//    fprintf(stdout, "Horsepool: %lu  [%.5f ms]\n", hrspl.size(), stopwatch.elapsed_milliseconds(hrsplStopwatch));
+//    for (const size_t index : hrspl)
+//    {
+//        fprintf(stdout, "%lu, ", index);
+//    }
+//    fprintf(stdout, "\n");
+//
+//    fprintf(stdout, "Knuth-Morris-Pratt: %lu  [%.5f ms]\n", kmp.size(), stopwatch.elapsed_milliseconds(kmpStopwatch));
+//    for (const size_t index : kmp)
+//    {
+//        fprintf(stdout, "%lu, ", index);
+//    }
+//    fprintf(stdout, "\n");
 
-    azgra::Stopwatch stopwatch;
-
-    auto bfStopwatch = stopwatch.start_new_stopwatch();
-    auto bruteForce = brute_force(text, pattern);
-    stopwatch.stop(bfStopwatch);
-
-    auto hrsplStopwatch = stopwatch.start_new_stopwatch();
-    auto hrspl = horspool(text, pattern);
-    stopwatch.stop(hrsplStopwatch);
-
-    auto kmpStopwatch = stopwatch.start_new_stopwatch();
-    auto kmp = knuth_morris_pratt(text, pattern);
-    stopwatch.stop(kmpStopwatch);
-
-    fprintf(stdout, "Brute force: %lu  [%.5f ms]\n", bruteForce.size(), stopwatch.elapsed_milliseconds(bfStopwatch));
-    for (const size_t index : bruteForce)
-    {
-        fprintf(stdout, "%lu, ", index);
-    }
-    fprintf(stdout, "\n");
-
-    fprintf(stdout, "Horsepool: %lu  [%.5f ms]\n", hrspl.size(), stopwatch.elapsed_milliseconds(hrsplStopwatch));
-    for (const size_t index : hrspl)
-    {
-        fprintf(stdout, "%lu, ", index);
-    }
-    fprintf(stdout, "\n");
-
-    fprintf(stdout, "Knuth-Morris-Pratt: %lu  [%.5f ms]\n", kmp.size(), stopwatch.elapsed_milliseconds(kmpStopwatch));
-    for (const size_t index : kmp)
-    {
-        fprintf(stdout, "%lu, ", index);
-    }
-    fprintf(stdout, "\n");
-
+    const char *survey = "survey";
+    auto automata = generate_gnfa_for_word(survey, 2);
     return 0;
 }
