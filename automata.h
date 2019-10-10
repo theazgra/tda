@@ -56,6 +56,7 @@ struct GNFA
     std::vector<size_t> initialStates;
     std::vector<size_t> finalStates;
     std::vector<Transition> transitions;
+    size_t rowSize;
 
     std::set<size_t> get_epsilon_connected_states(const std::vector<size_t> &states)
     {
@@ -71,8 +72,12 @@ struct GNFA
             }
         }
 
-        auto connectedToConnected = get_epsilon_connected_states(connectedStates);
-        connectedStates.insert(connectedStates.end(), connectedToConnected.begin(), connectedToConnected.end());
+        if (!connectedStates.empty())
+        {
+            auto connectedToConnected = get_epsilon_connected_states(connectedStates);
+            connectedStates.insert(connectedStates.end(), connectedToConnected.begin(), connectedToConnected.end());
+        }
+
         std::set<size_t> result(connectedStates.begin(), connectedStates.end());
         return result;
     }
@@ -82,11 +87,14 @@ struct GNFA
     {
         std::vector<size_t> nextStates;
 
-        for (const Transition &t : transitions)
+        for (const size_t &state : currentStates)
         {
-            if (t.s.sigma || t.s.c == c)
+            for (const Transition &t : transitions)
             {
-                nextStates.push_back(t.to);
+                if ((t.from == state) && (t.s.sigma || t.s.c == c))
+                {
+                    nextStates.push_back(t.to);
+                }
             }
         }
         auto connected = get_epsilon_connected_states(nextStates);
@@ -95,17 +103,27 @@ struct GNFA
         return result;
     }
 
-
-    bool accept(const std::string_view &word)
+    void add_to(std::set<size_t> &a, const std::set<size_t> &b)
     {
-        // TODO: Add epsilon connected states to inial states.
+        for (const size_t &s : b)
+        {
+            a.insert(s);
+        }
+    }
+
+
+    std::pair<bool, int> accept(const std::string_view &word)
+    {
         std::set<size_t> currentStates(initialStates.begin(), initialStates.end());
+        add_to(currentStates, get_epsilon_connected_states(initialStates));
+
         for (const char &c : word)
         {
             currentStates = get_next_states(currentStates, c);
             if (currentStates.empty())
             {
                 fprintf(stdout, "Empty next states!\n");
+                break;
             }
         }
 
@@ -113,10 +131,11 @@ struct GNFA
         {
             if (std::find(finalStates.begin(), finalStates.end(), s) != finalStates.end())
             {
-                return true;
+                int noOfErrors = (int)s / rowSize;
+                return std::make_pair(true, noOfErrors);
             }
         }
-        return false;
+        return std::make_pair(false,-1);
     }
 };
 
@@ -127,6 +146,7 @@ inline GNFA generate_gnfa_for_word(const std::string_view &word, const size_t ma
     const size_t rowCount = maxErrorCount + 1;
 
     GNFA result = {};
+    result.rowSize = colCount;
     result.initialStates.push_back(0);
 
     for (size_t row = 0; row < rowCount; ++row)
@@ -134,25 +154,43 @@ inline GNFA generate_gnfa_for_word(const std::string_view &word, const size_t ma
         for (size_t col = 0; col < colCount; ++col)
         {
             size_t currentState = (row * colCount) + col;
+
+
             // Final state in row.
             if (col == (colCount - 1))
             {
-                result.finalStates.push_back(currentState);
-                Transition downInsertion(currentState, Symbol::Sigma(), currentState + colCount);
+
+            }
+
+            Transition leftToRightMatch(currentState, Symbol::Char(word[col]), currentState + 1);
+            Transition downInsertion(currentState, Symbol::Sigma(), currentState + colCount);
+            Transition diagonalDel(currentState, Symbol::Epsilon(), currentState + colCount + 1);
+            Transition diagonalReplace(currentState, Symbol::Sigma(), currentState + colCount + 1);
+
+            if ((col < (colCount - 1)) && (row < (rowCount - 1)))
+            {
                 result.transitions.push_back(downInsertion);
+                result.transitions.push_back(leftToRightMatch);
+                result.transitions.push_back(diagonalDel);
+                result.transitions.push_back(diagonalReplace);
+                continue;
+            }
+            else if (col == (colCount - 1) && (row < (rowCount - 1)))
+            {
+                // last in row in not last row
+                result.finalStates.push_back(currentState);
+                result.transitions.push_back(downInsertion);
+            }
+            else if (col == (colCount - 1) && (row == (rowCount - 1)))
+            {
+                // last in row in last row
+                result.finalStates.push_back(currentState);
             }
             else
             {
-                Transition leftToRightMatch(currentState, Symbol::Char(word[col]), currentState + 1);
-                Transition downInsertion(currentState, Symbol::Sigma(), currentState + colCount);
-                Transition diagonalDel(currentState, Symbol::Epsilon(), currentState + colCount + 1);
-                Transition diagonalReplace(currentState, Symbol::Sigma(), currentState + colCount + 1);
+                assert(row == (rowCount - 1) && col < (colCount - 1));
                 result.transitions.push_back(leftToRightMatch);
-                result.transitions.push_back(downInsertion);
-                result.transitions.push_back(diagonalDel);
-                result.transitions.push_back(diagonalReplace);
             }
-
         }
     }
 

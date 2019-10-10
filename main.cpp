@@ -197,7 +197,17 @@ int main(int argc, char **argv)
 //    }
 //    fprintf(stdout, "\n");
 
-    const char *survey = "survey";
-    auto automata = generate_gnfa_for_word(survey, 2);
+    if (argc < 4)
+    {
+        fprintf(stdout, "[automata word] [# of errors] [test word]\n");
+        return 1;
+    }
+    const char *automataWord = argv[1];//"survey";
+    const char *test = argv[3];//"survey";
+    size_t maxErrorCount = static_cast<size_t >(atol(argv[2]));
+    auto automata = generate_gnfa_for_word(automataWord, maxErrorCount);
+    auto acceptResult = automata.accept(test);
+    fprintf(stdout, "Automata for: '%s' %s the word '%s' with # of errors: %i\n", automataWord, acceptResult.first ? "accepted" :
+                                                                                                "refused", test, acceptResult.second);
     return 0;
 }
