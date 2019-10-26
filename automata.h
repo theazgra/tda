@@ -37,6 +37,11 @@ struct Symbol
         s.sigma = true;
         return s;
     }
+
+    bool operator==(const Symbol &s)
+    {
+        return ((sigma && s.sigma) || (epsilon && s.epsilon) || (c == s.c));
+    }
 };
 
 struct Transition
@@ -122,7 +127,7 @@ struct GNFA
             currentStates = get_next_states(currentStates, c);
             if (currentStates.empty())
             {
-                fprintf(stdout, "Empty next states!\n");
+                //fprintf(stdout, "Empty next states!\n");
                 break;
             }
         }
@@ -131,11 +136,11 @@ struct GNFA
         {
             if (std::find(finalStates.begin(), finalStates.end(), s) != finalStates.end())
             {
-                int noOfErrors = (int)s / rowSize;
+                int noOfErrors = (int) s / rowSize;
                 return std::make_pair(true, noOfErrors);
             }
         }
-        return std::make_pair(false,-1);
+        return std::make_pair(false, -1);
     }
 };
 
@@ -154,13 +159,6 @@ inline GNFA generate_gnfa_for_word(const std::string_view &word, const size_t ma
         for (size_t col = 0; col < colCount; ++col)
         {
             size_t currentState = (row * colCount) + col;
-
-
-            // Final state in row.
-            if (col == (colCount - 1))
-            {
-
-            }
 
             Transition leftToRightMatch(currentState, Symbol::Char(word[col]), currentState + 1);
             Transition downInsertion(currentState, Symbol::Sigma(), currentState + colCount);

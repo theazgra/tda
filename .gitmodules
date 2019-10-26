@@ -1,0 +1,3 @@
+[submodule "AzgraCppLibrary"]
+	path = AzgraCppLibrary
+	url = git@github.com:theazgra/AzgraCppLibrary.git
