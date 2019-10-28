@@ -16,15 +16,14 @@ namespace dis
 
 
         ReutersArticle create_article(const int fromLine, const int toLine);
-        const char* m_fileName;
+        const char* m_fileName{};
         void parse();
         void load_articles();
 
     public:
         static SgmlFile load(const char *fileName);
 
-        // <REUTERS TOPICS=?? LEWISSPLIT=?? CGISPLIT=?? OLDID=?? NEWID=??>
-
+        void save_preprocessed_text(const char *fileName, const char *stopwordFile);
     };
 }
 
