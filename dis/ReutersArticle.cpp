@@ -33,12 +33,15 @@ namespace dis
     std::string ReutersArticle::extract_filtered_article_text(const std::vector<AsciiTextView> &stopwords) const
     {
         std::stringstream textStream;
+        textStream << "-------- ARTICLE --------\n";
 
         for (const auto &line : m_articleTextLines)
         {
             filter_line(textStream, line, stopwords);
             textStream << '\n';
         }
+
+        textStream << "------- END OF ARTICLE -----\n";
 
         return textStream.str();
     }
