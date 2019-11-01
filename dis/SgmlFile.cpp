@@ -71,16 +71,17 @@ namespace dis
     void SgmlFile::save_preprocessed_text(const char *fileName, const char *stopwordFile)
     {
         const auto stopwords = azgra::io::read_lines(stopwordFile);
-        const auto stopwardViews = strings_to_views(stopwords);
+        const auto stopwordViews = strings_to_views(stopwords);
         std::ofstream ofStream(fileName, std::ios::out);
         always_assert(ofStream.is_open());
 
-        std::string filteredText;
+        std::stringstream processedTextStream;
         for (const auto &article : m_articles)
         {
-            filteredText = article.extract_filtered_article_text(stopwardViews);
-            ofStream.write(filteredText.c_str(), filteredText.length());
+            article.extract_filtered_article_text(processedTextStream, stopwordViews);
         }
+        ofStream << processedTextStream.str();
+        //ofStream.write(filteredText.c_str(), filteredText.length());
         azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Green,
                                "Saved preprocessed text to %s.\nUsed stopwords from: %s\n",
                                fileName,

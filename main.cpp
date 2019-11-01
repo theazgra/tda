@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     sgmlFile.save_preprocessed_text(outputFile, stopwordsFile);
     azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Green, "Save preprocessed text\n");
 
-    //test_porter_stemmer();
+    test_porter_stemmer();
 
 
     return 0;

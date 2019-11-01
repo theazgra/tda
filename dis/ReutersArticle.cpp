@@ -30,10 +30,10 @@ namespace dis
         }
     }
 
-    std::string ReutersArticle::extract_filtered_article_text(const std::vector<AsciiTextView> &stopwords) const
+    void ReutersArticle::extract_filtered_article_text(std::stringstream &textStream,
+                                                       const std::vector<AsciiTextView> &stopwords) const
     {
-        std::stringstream textStream;
-        textStream << "-------- ARTICLE --------\n";
+        textStream << "\n-------- ARTICLE --------\n";
 
         for (const auto &line : m_articleTextLines)
         {
@@ -42,8 +42,6 @@ namespace dis
         }
 
         textStream << "------- END OF ARTICLE -----\n";
-
-        return textStream.str();
     }
 
     void ReutersArticle::filter_line(std::stringstream &ss, const ReutersArticle::AsciiTextView &line,
@@ -67,7 +65,8 @@ namespace dis
                 continue;
             if (!azgra::collection::contains(stopwords.begin(), stopwords.end(), word))
             {
-                ss << word.string_view() << ' ';
+                AsciiString str = stem_word(word.data(), word.length());
+                ss << str.get_c_string() << ' ';
             }
         }
     }

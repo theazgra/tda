@@ -3,6 +3,7 @@
 #include <azgra/string/smart_string_view.h>
 #include <sstream>
 #include <azgra/collection/vector_linq.h>
+#include "porter_stemmer.h"
 
 namespace dis
 {
@@ -15,6 +16,7 @@ namespace dis
         std::vector<AsciiTextView> m_articleTextLines;
 
         void filter_line(std::stringstream &ss, const AsciiTextView &line, const std::vector<AsciiTextView> &stopwords) const;
+
         void parse_article();
 
     public:
@@ -22,7 +24,7 @@ namespace dis
 
         explicit ReutersArticle(std::vector<AsciiTextView> &articleLines);
 
-        [[nodiscard]] std::string extract_filtered_article_text(const std::vector<AsciiTextView> &stopwords) const;
+        void extract_filtered_article_text(std::stringstream &textStream, const std::vector<AsciiTextView> &stopwords) const;
     };
 
 }
