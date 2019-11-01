@@ -12,7 +12,7 @@ static bool ends(StemInfo &si, const char *string)
     if (stringLen > (si.endIndex + 1))
         return false;
 
-    if (si.string->last_index_of(string) != static_cast<int>((si.endIndex - stringLen + 1)))
+    if (si.string.last_index_of(string) != static_cast<int>((si.endIndex - stringLen + 1)))
         return false;
     si.offset = si.endIndex - stringLen;
     return true;
@@ -24,9 +24,9 @@ static bool ends(StemInfo &si, const char *string)
 static void set_to(StemInfo &si, const char *string)
 {
     const size_t stringLen = strlen(string);
-    for (size_t i = 0; i < stringLen; ++i)
+    for (long i = 0; i < stringLen; ++i)
     {
-        si.string->at(1 + si.offset + i) = string[i];
+        si.string.at(1 + si.offset + i) = string[i];
     }
     si.endIndex = si.offset + stringLen;
 }
@@ -37,7 +37,7 @@ static void set_to(StemInfo &si, const char *string)
 /// \return True if char at index is consonant or 'y' as the first char of the word or char after vowel
 static bool is_consonant(const StemInfo &si, const size_t i)
 {
-    const char c = si.string->operator[](i);
+    const char c = si.string.at(i);
     if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u')
     {
         return false;
@@ -71,8 +71,10 @@ static bool is_vowel(const StemInfo &si, const size_t i)
 /// \return m as (VC)^m in the porter string.
 static size_t consonant_sequence_count(const StemInfo &si)
 {
+    if (si.offset < 0 || si.offset > si.endIndex)
+        return 0;
     size_t result = 0;
-    size_t i = 0;
+    long i = 0;
     for (;;)
     {
         if (i > si.offset)
@@ -119,7 +121,7 @@ static size_t consonant_sequence_count(const StemInfo &si)
 /// \return True if string contains vowel.
 static bool vowel_in_stem(const StemInfo &si)
 {
-    for (size_t i = 0; i < (si.offset + 1); ++i)
+    for (int i = 0; i < (si.offset + 1); ++i)
     {
         if (is_vowel(si, i))
             return true;
@@ -135,7 +137,7 @@ static bool double_consonant(const StemInfo &si, const size_t i)
 {
     if (i < 1)
         return false;
-    if (si.string->at(i) != si.string->at(i - 1))
+    if (si.string.at(i) != si.string.at(i - 1))
         return false;
     return is_consonant(si, i);
 }
@@ -149,7 +151,7 @@ static bool is_cvc_end(const StemInfo &si, const size_t i)
     if ((i < 2) || is_vowel(si, i - 2) || is_consonant(si, i - 1) || is_vowel(si, i))
         return false;
 
-    const char c = si.string->at(i);
+    const char c = si.string.at(i);
     return !(c == 'w' || c == 'x' || c == 'y');
 }
 
@@ -167,7 +169,7 @@ static void step_1abc(StemInfo &si)
         {
             set_to(si, "i");
         }
-        else if (si.string->at(si.endIndex - 1) != 's')
+        else if (si.string.at(si.endIndex - 1) != 's')
         {
             si.endIndex -= 1;
         }
@@ -191,7 +193,7 @@ static void step_1abc(StemInfo &si)
         else if (double_consonant(si, si.endIndex))
         {
             --si.endIndex;
-            const char c = si.string->at(si.endIndex);
+            const char c = si.string.at(si.endIndex);
             if (c == 'l' || c == 's' || c == 'z')
                 ++si.endIndex;
         }
@@ -263,7 +265,7 @@ static void step_2(StemInfo &si)
 
 static void step_3(StemInfo &si)
 {
-    if (si.string->at(si.endIndex) == 'e')
+    if (si.string.at(si.endIndex) == 'e')
     {
         if (ends(si, "icate"))
             replace_end_if_m_gt0(si, "ic");
@@ -287,76 +289,76 @@ static void step_3(StemInfo &si)
 
 static void step_4(StemInfo &si)
 {
-    if (si.string->at(si.endIndex - 1) == 'a')
+    if (si.string.at(si.endIndex - 1) == 'a')
     {
         if (ends(si, "al"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'c')
+    else if (si.string.at(si.endIndex - 1) == 'c')
     {
         if (ends(si, "ence") || ends(si, "ance"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'e')
+    else if (si.string.at(si.endIndex - 1) == 'e')
     {
         if (ends(si, "er"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'i')
+    else if (si.string.at(si.endIndex - 1) == 'i')
     {
         if (ends(si, "ic"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'l')
+    else if (si.string.at(si.endIndex - 1) == 'l')
     {
         if (ends(si, "able") || ends(si, "ible"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'n')
+    else if (si.string.at(si.endIndex - 1) == 'n')
     {
         if (ends(si, "ant") || ends(si, "ement") || ends(si, "ment") || ends(si, "end"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'o')
+    else if (si.string.at(si.endIndex - 1) == 'o')
     {
         if ((ends(si, "ion") && (
-                (si.string->at(si.offset) == 's') || (si.string->at(si.offset) == 't'))
+                (si.string.at(si.offset) == 's') || (si.string.at(si.offset) == 't'))
             ) ||
             ends(si, "ou"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 's')
+    else if (si.string.at(si.endIndex - 1) == 's')
     {
         if (ends(si, "ism"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 't')
+    else if (si.string.at(si.endIndex - 1) == 't')
     {
         if (ends(si, "ate") || ends(si, "iti"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'u')
+    else if (si.string.at(si.endIndex - 1) == 'u')
     {
         if (ends(si, "ous"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'v')
+    else if (si.string.at(si.endIndex - 1) == 'v')
     {
         if (ends(si, "ive"))
             void(0);
         else return;
     }
-    else if (si.string->at(si.endIndex - 1) == 'z')
+    else if (si.string.at(si.endIndex - 1) == 'z')
     {
         if (ends(si, "ize"))
             void(0);
@@ -371,7 +373,7 @@ static void step_4(StemInfo &si)
 static void step_5(StemInfo &si)
 {
     si.offset = si.endIndex;
-    if (si.string->at(si.endIndex) == 'e')
+    if (si.string.at(si.endIndex) == 'e')
     {
         const size_t m = consonant_sequence_count(si);
         if ((m > 1) || ((m == 1) && (!is_cvc_end(si, si.endIndex - 1))))
@@ -379,7 +381,7 @@ static void step_5(StemInfo &si)
             --si.endIndex;
         }
     }
-    if (si.string->at(si.endIndex) == 'l')
+    if (si.string.at(si.endIndex) == 'l')
     {
         if (double_consonant(si, si.endIndex) && consonant_sequence_count(si) > 1)
         {
@@ -388,13 +390,14 @@ static void step_5(StemInfo &si)
     }
 }
 
+
 AsciiString stem_word(const char *string)
 {
     AsciiString asciiString(string);
-    StemInfo si(&asciiString);
+    StemInfo si(asciiString);
 
     // NOTE(Moravec): No change can be made to strings of size [0,2]
-    if (si.string->length() < 3)
+    if (si.string.length() < 3)
     {
         return asciiString;
     }
@@ -405,8 +408,28 @@ AsciiString stem_word(const char *string)
     step_4(si);
     step_5(si);
 
-    return AsciiString(si.string->get_c_string(), si.endIndex + 1);
-    return si.string->substring(0, si.endIndex + 1);
+    return si.string.substring(0, si.endIndex + 1);
+}
+
+
+AsciiString stem_word(const char *string, const size_t len)
+{
+    AsciiString asciiString(string, len);
+    StemInfo si(asciiString);
+
+    // NOTE(Moravec): No change can be made to strings of size [0,2]
+    if (si.string.length() < 3)
+    {
+        return asciiString;
+    }
+
+    step_1abc(si);
+    step_2(si);
+    step_3(si);
+    step_4(si);
+    step_5(si);
+
+    return si.string.substring(0, si.endIndex + 1);
 }
 
 static void stem_test(const char *a, const char *b)
@@ -511,3 +534,5 @@ void test_porter_stemmer()
     STEM_TEST("controll", "");
     STEM_TEST("roll", "roll");
 }
+
+
