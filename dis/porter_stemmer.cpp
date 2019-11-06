@@ -446,93 +446,91 @@ static void stem_test(const char *a, const char *b)
     }
 }
 
-#define STEM_TEST(a, b) stem_test(a,b)
-
 void test_porter_stemmer()
 {
     // 1a
-    STEM_TEST("caresses", "caress");
-    STEM_TEST("ponies", "poni");
-    STEM_TEST("ties", "ti");
-    STEM_TEST("caress", "caress");
-    STEM_TEST("cats", "cat");
+    stem_test("caresses", "caress");
+    stem_test("ponies", "poni");
+    stem_test("ties", "ti");
+    stem_test("caress", "caress");
+    stem_test("cats", "cat");
 
     // 1b
-    STEM_TEST("feed", "feed");
-    STEM_TEST("agreed", "agree");
-    STEM_TEST("plastered", "plaster");
-    STEM_TEST("bled", "bled");
-    STEM_TEST("motoring", "motor");
-    STEM_TEST("sing", "sing");
+    stem_test("feed", "feed");
+    stem_test("agreed", "agree");
+    stem_test("plastered", "plaster");
+    stem_test("bled", "bled");
+    stem_test("motoring", "motor");
+    stem_test("sing", "sing");
 
     // 1b_1
-    STEM_TEST("conflated", "conflate");
-    STEM_TEST("troubling", "trouble");
-    STEM_TEST("sized", "size");
-    STEM_TEST("hopping", "hop");
-    STEM_TEST("tanned", "tan");
-    STEM_TEST("hissing", "hiss");
-    STEM_TEST("fizzed", "fizz");
+    stem_test("conflated", "conflate");
+    stem_test("troubling", "trouble");
+    stem_test("sized", "size");
+    stem_test("hopping", "hop");
+    stem_test("tanned", "tan");
+    stem_test("hissing", "hiss");
+    stem_test("fizzed", "fizz");
 
     // 1c
-    STEM_TEST("happy", "happi");
-    STEM_TEST("sky", "sky");
+    stem_test("happy", "happi");
+    stem_test("sky", "sky");
 
     // 2
-    STEM_TEST("relational", "relate");
-    STEM_TEST("conditional", "condition");
-    STEM_TEST("rational", "rational");
-    STEM_TEST("valenci", "valence");
-    STEM_TEST("hesitanci", "hesitance");
-    STEM_TEST("digitizer", "digitize");
-    STEM_TEST("radicalli", "radical");
-    STEM_TEST("vileli", "vile");
-    STEM_TEST("analogousli", "analogous");
-    STEM_TEST("operator", "operate");
-    STEM_TEST("decisiveness", "decisive");
-    STEM_TEST("hopefulness", "hope");
-    STEM_TEST("callousness", "callous");
-    STEM_TEST("formaliti", "formal");
-    STEM_TEST("sensitiviti", "sensitive");
-    STEM_TEST("vietnamization", "vietnamize");
+    stem_test("relational", "relate");
+    stem_test("conditional", "condition");
+    stem_test("rational", "rational");
+    stem_test("valenci", "valence");
+    stem_test("hesitanci", "hesitance");
+    stem_test("digitizer", "digitize");
+    stem_test("radicalli", "radical");
+    stem_test("vileli", "vile");
+    stem_test("analogousli", "analogous");
+    stem_test("operator", "operate");
+    stem_test("decisiveness", "decisive");
+    stem_test("hopefulness", "hope");
+    stem_test("callousness", "callous");
+    stem_test("formaliti", "formal");
+    stem_test("sensitiviti", "sensitive");
+    stem_test("vietnamization", "vietnamize");
 
     // 3
-    STEM_TEST("triplicate", "triplic");
-    STEM_TEST("formative", "form");
-    STEM_TEST("formalize", "formal");
-    STEM_TEST("electriciti", "electric");
-    STEM_TEST("electrical", "electric");
-    STEM_TEST("hopeful", "hope");
-    STEM_TEST("goodness", "good");
+    stem_test("triplicate", "triplic");
+    stem_test("formative", "form");
+    stem_test("formalize", "formal");
+    stem_test("electriciti", "electric");
+    stem_test("electrical", "electric");
+    stem_test("hopeful", "hope");
+    stem_test("goodness", "good");
 
     // 4
-    STEM_TEST("revival", "reviv");
-    STEM_TEST("allowance", "allow");
-    STEM_TEST("inference", "infer");
-    STEM_TEST("airliner", "airlin");
-    STEM_TEST("gyroscopic", "gyroscop");
-    STEM_TEST("adjustable", "adjust");
-    STEM_TEST("defensible", "defens");
-    STEM_TEST("irritant", "irrit");
-    STEM_TEST("replacement", "replac");
-    STEM_TEST("adjustment", "adjust");
-    STEM_TEST("dependant", "depend");
-    STEM_TEST("adoption", "adopt");
-    STEM_TEST("adopsion", "adops");
-    STEM_TEST("homologou", "homolog");
-    STEM_TEST("communism", "commun");
-    STEM_TEST("activate", "activ");
-    STEM_TEST("angulariti", "angular");
-    STEM_TEST("homologous", "homolog");
-    STEM_TEST("effective", "effect");
-    STEM_TEST("bowdlerize", "bowdler");
+    stem_test("revival", "reviv");
+    stem_test("allowance", "allow");
+    stem_test("inference", "infer");
+    stem_test("airliner", "airlin");
+    stem_test("gyroscopic", "gyroscop");
+    stem_test("adjustable", "adjust");
+    stem_test("defensible", "defens");
+    stem_test("irritant", "irrit");
+    stem_test("replacement", "replac");
+    stem_test("adjustment", "adjust");
+    stem_test("dependant", "depend");
+    stem_test("adoption", "adopt");
+    stem_test("adopsion", "adops");
+    stem_test("homologou", "homolog");
+    stem_test("communism", "commun");
+    stem_test("activate", "activ");
+    stem_test("angulariti", "angular");
+    stem_test("homologous", "homolog");
+    stem_test("effective", "effect");
+    stem_test("bowdlerize", "bowdler");
 
     // 5
-    STEM_TEST("probate", "probat");
-    STEM_TEST("rate", "rate");
-    STEM_TEST("cease", "ceas");
-    STEM_TEST("controll", "");
-    STEM_TEST("roll", "roll");
+    stem_test("probate", "probat");
+    stem_test("rate", "rate");
+    stem_test("cease", "ceas");
+    stem_test("controll", "");
+    stem_test("roll", "roll");
 }
 
 
