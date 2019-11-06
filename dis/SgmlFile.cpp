@@ -3,16 +3,6 @@
 
 namespace dis
 {
-    static std::vector<azgra::string::SmartStringView<char>> strings_to_views(const std::vector<std::string> &strings)
-    {
-        std::vector<azgra::string::SmartStringView<char>> views(strings.size());
-        for (size_t i = 0; i < strings.size(); ++i)
-        {
-            views[i] = azgra::string::SmartStringView<char>(strings[i].c_str());
-        }
-        return views;
-    }
-
     SgmlFile SgmlFile::load(const char *fileName)
     {
         SgmlFile file;
@@ -38,6 +28,7 @@ namespace dis
 
     void SgmlFile::load_articles()
     {
+        DocId docId = 0;
         int fromLine = -1;
         for (size_t line = 0; line < m_lines.size(); ++line)
         {
@@ -50,7 +41,7 @@ namespace dis
             if (m_lineViews[line].starts_with("</REUTERS>"))
             {
                 always_assert(fromLine != -1);
-                m_articles.push_back(create_article(fromLine, line));
+                m_articles.push_back(create_article(fromLine, line, docId++));
                 fromLine = -1;
             }
         }
@@ -58,14 +49,22 @@ namespace dis
         always_assert(fromLine == -1 && "Missing closing of article");
     }
 
-    ReutersArticle SgmlFile::create_article(const int fromLine, const int toLine)
+    ReutersArticle SgmlFile::create_article(const int fromLine, const int toLine, const DocId id)
     {
         std::vector<azgra::string::SmartStringView<char>> articleLines((toLine - fromLine) + 1);
         for (int i = 0; i <= (toLine - fromLine); ++i)
         {
             articleLines[i] = m_lineViews[fromLine + i];
         }
-        return ReutersArticle(articleLines);
+        return ReutersArticle(id, articleLines);
+    }
+
+    void SgmlFile::preprocess_article_text(const std::vector<azgra::string::SmartStringView<char>> &stopwords)
+    {
+        for (auto &article : m_articles)
+        {
+            article.filter_article_text(stopwords);
+        }
     }
 
     void SgmlFile::save_preprocessed_text(const char *fileName, const char *stopwordFile)
@@ -88,5 +87,27 @@ namespace dis
                                stopwordFile);
     }
 
+    std::vector<ReutersArticle> SgmlFile::get_articles()
+    {
+        return m_articles;
+    }
+
+    void SgmlFile::destroy_original_text()
+    {
+        m_lines.clear();
+        m_lineViews.clear();
+        for (auto &article : m_articles)
+        {
+            article.destroy_views();
+        }
+    }
+
+    void SgmlFile::index_atricles(TermIndex &index) const
+    {
+        for (const auto &article : m_articles)
+        {
+            article.index_article_terms(index);
+        }
+    }
 
 }

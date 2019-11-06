@@ -2,8 +2,15 @@
 
 namespace dis
 {
-    ReutersArticle::ReutersArticle(std::vector<AsciiTextView> &articleLines)
+
+    ReutersArticle::ReutersArticle(const DocId id)
     {
+        m_docId = id;
+    }
+
+    ReutersArticle::ReutersArticle(const DocId id, std::vector<AsciiTextView> &articleLines)
+    {
+        m_docId = id;
         m_articleLines = std::move(articleLines);
         parse_article();
     }
@@ -28,6 +35,18 @@ namespace dis
                 m_articleTextLines.push_back(m_articleLines[line]);
             }
         }
+    }
+
+    void ReutersArticle::filter_article_text(const std::vector<azgra::string::SmartStringView<char>> &stopwords)
+    {
+        std::stringstream articleStream;
+        for (const auto &line : m_articleTextLines)
+        {
+            filter_line(articleStream, line, stopwords);
+            articleStream << '\n';
+        }
+        m_processedText = articleStream.str();
+        m_processedWords = azgra::string::SmartStringView<char>(m_processedText.c_str()).multi_split({' ', '\n'});
     }
 
     void ReutersArticle::extract_filtered_article_text(std::stringstream &textStream,
@@ -70,4 +89,37 @@ namespace dis
             }
         }
     }
+
+    std::string const &ReutersArticle::get_processed_string() const
+    {
+        return m_processedText;
+    }
+
+    void ReutersArticle::destroy_views()
+    {
+        m_articleLines.clear();
+        m_articleTextLines.clear();
+    }
+
+    void ReutersArticle::index_article_terms(TermIndex &index) const
+    {
+        std::string wordKey;
+        for (const auto &word : m_processedWords)
+        {
+            if (word.is_empty() || word.equals(" "))
+                continue;
+
+            wordKey = std::string(word.string_view());
+            if (index.find(wordKey) == index.end())
+            {
+                index[wordKey] = {m_docId};
+            }
+            else
+            {
+                index[wordKey].insert(m_docId);
+            }
+        }
+    }
+
+
 }

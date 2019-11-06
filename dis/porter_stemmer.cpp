@@ -21,10 +21,10 @@ static bool ends(StemInfo &si, const char *string)
 /// Set suffix for porter string from (1 + offset) to string value
 /// \param si Porter string.
 /// \param string Suffix value.
-static void set_to(StemInfo &si, const char *string)
+static void set_end(StemInfo &si, const char *string)
 {
     const size_t stringLen = strlen(string);
-    for (long i = 0; i < stringLen; ++i)
+    for (size_t i = 0; i < stringLen; ++i)
     {
         si.string.at(1 + si.offset + i) = string[i];
     }
@@ -69,9 +69,9 @@ static bool is_vowel(const StemInfo &si, const size_t i)
 /// Measure the consonant sequence count to the offset.
 /// \param si Porter string.
 /// \return m as (VC)^m in the porter string.
-static size_t consonant_sequence_count(const StemInfo &si)
+static size_t vc_seq_count(const StemInfo &si)
 {
-    if (si.offset < 0 || si.offset > si.endIndex)
+    if (si.offset < 0 || si.offset > static_cast<long>(si.endIndex))
         return 0;
     size_t result = 0;
     long i = 0;
@@ -167,7 +167,7 @@ static void step_1abc(StemInfo &si)
         }
         else if (ends(si, "ies"))
         {
-            set_to(si, "i");
+            set_end(si, "i");
         }
         else if (si.string.at(si.endIndex - 1) != 's')
         {
@@ -176,7 +176,7 @@ static void step_1abc(StemInfo &si)
     }
     if (ends(si, "eed"))
     {
-        if (consonant_sequence_count(si) > 0)
+        if (vc_seq_count(si) > 0)
         {
             si.endIndex -= 1;
         }
@@ -185,11 +185,11 @@ static void step_1abc(StemInfo &si)
     {
         si.endIndex = si.offset;
         if (ends(si, "at"))
-            set_to(si, "ate");
+            set_end(si, "ate");
         else if (ends(si, "bl"))
-            set_to(si, "ble");
+            set_end(si, "ble");
         else if (ends(si, "iz"))
-            set_to(si, "ize");
+            set_end(si, "ize");
         else if (double_consonant(si, si.endIndex))
         {
             --si.endIndex;
@@ -197,26 +197,26 @@ static void step_1abc(StemInfo &si)
             if (c == 'l' || c == 's' || c == 'z')
                 ++si.endIndex;
         }
-        else if ((consonant_sequence_count(si) == 1) && is_cvc_end(si, si.endIndex))
-            set_to(si, "e");
+        else if ((vc_seq_count(si) == 1) && is_cvc_end(si, si.endIndex))
+            set_end(si, "e");
     }
 
     if (ends(si, "y") && vowel_in_stem(si))
     {
-        set_to(si, "i");
+        set_end(si, "i");
     }
 }
 
 static void replace_end_if_m_gt0(StemInfo &si, const char *suffix)
 {
-    if (consonant_sequence_count(si) > 0)
-        set_to(si, suffix);
+    if (vc_seq_count(si) > 0)
+        set_end(si, suffix);
 }
 
 static void remove_end_if_m_gt0(StemInfo &si)
 {
-    if (consonant_sequence_count(si) > 0)
-        set_to(si, "");
+    if (vc_seq_count(si) > 0)
+        set_end(si, "");
 }
 
 static void step_2(StemInfo &si)
@@ -364,7 +364,7 @@ static void step_4(StemInfo &si)
             void(0);
         else return;
     }
-    if (consonant_sequence_count(si) > 1)
+    if (vc_seq_count(si) > 1)
     {
         si.endIndex = si.offset;
     }
@@ -375,7 +375,7 @@ static void step_5(StemInfo &si)
     si.offset = si.endIndex;
     if (si.string.at(si.endIndex) == 'e')
     {
-        const size_t m = consonant_sequence_count(si);
+        const size_t m = vc_seq_count(si);
         if ((m > 1) || ((m == 1) && (!is_cvc_end(si, si.endIndex - 1))))
         {
             --si.endIndex;
@@ -383,7 +383,7 @@ static void step_5(StemInfo &si)
     }
     if (si.string.at(si.endIndex) == 'l')
     {
-        if (double_consonant(si, si.endIndex) && consonant_sequence_count(si) > 1)
+        if (double_consonant(si, si.endIndex) && vc_seq_count(si) > 1)
         {
             --si.endIndex;
         }
@@ -481,25 +481,25 @@ void test_porter_stemmer()
     stem_test("conditional", "condition");
     stem_test("rational", "rational");
     stem_test("valenci", "valence");
-    stem_test("hesitanci", "hesitance");
-    stem_test("digitizer", "digitize");
-    stem_test("radicalli", "radical");
+    stem_test("hesitanci", "hesit"); // hesitance
+    stem_test("digitizer", "digit"); // digitize
+    stem_test("radicalli", "radic"); // radical
     stem_test("vileli", "vile");
-    stem_test("analogousli", "analogous");
-    stem_test("operator", "operate");
-    stem_test("decisiveness", "decisive");
+    stem_test("analogousli", "analog"); // analogous
+    stem_test("operator", "oper"); // operate
+    stem_test("decisiveness", "decis"); // decisive
     stem_test("hopefulness", "hope");
     stem_test("callousness", "callous");
     stem_test("formaliti", "formal");
-    stem_test("sensitiviti", "sensitive");
-    stem_test("vietnamization", "vietnamize");
+    stem_test("sensitiviti", "sensit"); // sensitive
+    stem_test("vietnamization", "vietnam"); //vietnamize
 
     // 3
     stem_test("triplicate", "triplic");
     stem_test("formative", "form");
     stem_test("formalize", "formal");
-    stem_test("electriciti", "electric");
-    stem_test("electrical", "electric");
+    stem_test("electriciti", "electr"); //electric
+    stem_test("electrical", "electr");
     stem_test("hopeful", "hope");
     stem_test("goodness", "good");
 
@@ -529,8 +529,9 @@ void test_porter_stemmer()
     stem_test("probate", "probat");
     stem_test("rate", "rate");
     stem_test("cease", "ceas");
-    stem_test("controll", "");
+    stem_test("controll", "control");
     stem_test("roll", "roll");
+    stem_test("warcraft", "");
 }
 
 

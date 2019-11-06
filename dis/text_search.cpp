@@ -1,23 +1,4 @@
-#pragma once
-#include <vector>
-#include <string_view>
-#include <cstring>
-
-#define CHAR_COUNT 256
-using namespace std;
-
-inline std::string read_file(const char *file)
-{
-    std::ifstream fs(file, std::ios::in | std::ios::binary | std::ios::ate);
-    assert(fs.is_open());
-
-    auto fSize = fs.tellg();
-    fs.seekg(std::ios::beg);
-
-    std::vector<char> fData(fSize);
-    fs.read(fData.data(), fSize);
-    return std::string(fData.data(), fSize);
-}
+#include "text_search.h"
 
 std::vector<size_t> brute_force(const string_view &text, const string_view &pattern)
 {
@@ -52,7 +33,7 @@ std::vector<size_t> brute_force(const string_view &text, const string_view &patt
     return result;
 }
 
-std::vector<long> preprocess_bc(const string_view &pattern)
+static std::vector<long> preprocess_bc(const string_view &pattern)
 {
     std::vector<long> bc(CHAR_COUNT);
     size_t patternLen = pattern.size();
@@ -90,7 +71,7 @@ std::vector<size_t> horspool(const string_view &text, const string_view &pattern
     return result;
 }
 
-std::vector<long> preprocess_kmp(const string_view &pattern)
+static std::vector<long> preprocess_kmp(const string_view &pattern)
 {
     std::vector<long> kmpNext(pattern.length() + 1);
 
