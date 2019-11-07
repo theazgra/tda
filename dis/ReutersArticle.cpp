@@ -73,7 +73,7 @@ namespace dis
                 lineStream << c;
             else if (c >= 'A' && c <= 'Z')
                 lineStream << static_cast<char>(c + LowerCaseOffset);
-            else if (c == '<' || c == '>') // Force word separation at angle brackets.
+            else if (c == '<' || c == '>' || c == '/' || c == '\\' || c == '.' || c == '-') // Force word separation at some characters
                 lineStream << ' ';
         }
         const auto lineString = lineStream.str();
@@ -106,7 +106,12 @@ namespace dis
         std::string wordKey;
         for (const auto &word : m_processedWords)
         {
-            if (word.is_empty() || word.equals(" "))
+            if (word.equals("pesodollar"))
+            {
+                fprintf(stdout, "bad word\n");
+            }
+
+            if (!is_term(word))
                 continue;
 
             wordKey = std::string(word.string_view());

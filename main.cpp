@@ -1,6 +1,7 @@
 #include "dis/SgmlFile.h"
 #include "dis/porter_stemmer.h"
 #include "dis/sgml_collection.h"
+
 #define ReutersFiles { "/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm", \
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-001.sgm", \
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-002.sgm", \
@@ -27,6 +28,7 @@
 int main(int argc, char **argv)
 {
     dis::SgmlFileCollection collection(ReutersFiles);
+    //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm"});
     collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     collection.create_term_index();
     collection.dump_index("index.data");
