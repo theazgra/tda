@@ -18,6 +18,7 @@ namespace dis
         void create_term_index();
 
         void dump_index(const char* path);
+        void load_index(const char* path);
 
     };
 }

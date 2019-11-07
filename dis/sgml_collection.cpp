@@ -52,4 +52,29 @@ namespace dis
         }
     }
 
+    void SgmlFileCollection::load_index(const char *path)
+    {
+        std::vector<std::pair<std::string, std::set<DocId>>> mapPairs;
+        std::function<std::pair<std::string, std::set<DocId>>(const azgra::string::SmartStringView<char> &)> fn =
+                [](const azgra::string::SmartStringView<char> &line)
+                {
+                    auto index = line.index_of(":");
+                    std::string term = std::string(line.substring(0, index).string_view());
+                    auto docIds = line.substring(index + 1).split(',');
+                    std::set<DocId> ids;
+                    for (const auto dIdStr : docIds)
+                    {
+                        if (!dIdStr.is_empty())
+                        {
+                            ids.insert(atol(dIdStr.data()));
+                        }
+                    }
+                    return std::make_pair(term, ids);
+                };
+
+        mapPairs = azgra::io::parse_by_lines(path, fn);
+        m_index = TermIndex(mapPairs.begin(), mapPairs.end());
+        fprintf(stdout, "%lu\n", mapPairs.size());
+    }
+
 }
