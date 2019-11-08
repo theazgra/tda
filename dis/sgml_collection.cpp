@@ -35,7 +35,6 @@ namespace dis
         }
         fprintf(stdout, "Created index with %lu terms\n", m_index.size());
         auto pair = *m_index.begin();
-        fprintf(stdout, "Term %s in %lu documents\n", pair.first.c_str(), pair.second.size());
 
     }
 
@@ -73,7 +72,7 @@ namespace dis
                     return std::make_pair(term, ids);
                 };
 
-        mapPairs = azgra::io::parse_by_lines(path, fn);
+        mapPairs = azgra::io::parse_by_lines<std::pair<std::string, std::set<DocId>>>(path, fn);
         m_index = TermIndex(mapPairs.begin(), mapPairs.end());
         fprintf(stdout, "%lu\n", mapPairs.size());
     }
@@ -91,6 +90,55 @@ namespace dis
                 fStream << article.get_processed_string() << '\n';
             }
         }
+    }
+
+    QueryResult SgmlFileCollection::query(azgra::string::SmartStringView<char> &queryText) const
+    {
+        QueryResult result = {};
+        if (queryText.is_empty())
+        {
+            azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Red, "Query string is empty.\n");
+            return result;
+        }
+        if (m_index.empty())
+        {
+            azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Red, "Index wasn't created nor loaded.\n");
+            return result;
+        }
+
+        auto keywords = queryText.split(" ");
+        std::vector<SizedIndexEntry> indexEntries;
+        for (const auto &keyword : keywords)
+        {
+
+            AsciiString str = stem_word(keyword.data(), keyword.length());
+            const std::string key = std::string(str.get_c_string());
+            if (keyword.is_empty() || (m_index.find(key) == m_index.end()))
+                continue;
+
+            indexEntries.push_back(SizedIndexEntry(m_index.at(key))); // NOLINT(hicpp-use-emplace,modernize-use-emplace)
+        }
+
+        std::sort(indexEntries.begin(), indexEntries.end());
+
+        //result.documents = indexEntries[0].documents;
+        std::vector<DocId> unionVector = std::vector<DocId>(indexEntries[0].documents.begin(),
+                                                            indexEntries[0].documents.end());
+        if (indexEntries.size() > 1)
+        {
+            for (size_t i = 1; i < indexEntries.size(); ++i)
+            {
+                std::vector<DocId> unionResult;
+                unionResult.clear();
+                std::set_intersection(unionVector.begin(), unionVector.end(),
+                                      indexEntries[i].documents.begin(),
+                                      indexEntries[i].documents.end(),
+                                      std::back_inserter(unionResult));
+                unionVector = unionResult;
+            }
+        }
+        result.documents = std::set<DocId>(unionVector.begin(), unionVector.end());
+        return result;
     }
 
 }
