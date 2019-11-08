@@ -35,6 +35,8 @@ namespace dis
         void destroy_views();
 
         void index_article_terms(TermIndex &index) const;
+
+        DocId get_docId() const;
     };
 
 }

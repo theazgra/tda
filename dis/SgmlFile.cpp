@@ -3,15 +3,15 @@
 
 namespace dis
 {
-    SgmlFile SgmlFile::load(const char *fileName)
+    SgmlFile SgmlFile::load(const char *fileName, DocId &docId)
     {
         SgmlFile file;
         file.m_fileName = fileName;
-        file.parse();
+        file.parse(docId);
         return file;
     }
 
-    void SgmlFile::parse()
+    void SgmlFile::parse(DocId &docId)
     {
         m_lines = azgra::io::read_lines(m_fileName);
         m_lineViews.resize(m_lines.size());
@@ -21,14 +21,13 @@ namespace dis
         }
 
         always_assert(m_lines[0] == "<!DOCTYPE lewis SYSTEM \"lewis.dtd\">" && "Wrong Sgml file header.");
-        load_articles();
+        load_articles(docId);
         azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Green, "Loaded %lu Reuter articles from %s.\n", m_articles.size(),
                                m_fileName);
     }
 
-    void SgmlFile::load_articles()
+    void SgmlFile::load_articles(DocId &docId)
     {
-        DocId docId = 0;
         int fromLine = -1;
         for (size_t line = 0; line < m_lines.size(); ++line)
         {

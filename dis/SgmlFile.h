@@ -27,14 +27,14 @@ namespace dis
 
         const char *m_fileName{};
 
-        void parse();
+        void parse(DocId &docId);
 
-        void load_articles();
+        void load_articles(DocId &docId);
 
     public:
         SgmlFile() = default;
 
-        static SgmlFile load(const char *fileName);
+        static SgmlFile load(const char *fileName, DocId &docId);
 
         void preprocess_article_text(const std::vector<azgra::string::SmartStringView<char>> &stopwords);
 
@@ -43,6 +43,7 @@ namespace dis
         std::vector<ReutersArticle> get_articles();
 
         void destroy_original_text();
+
         void index_atricles(TermIndex &index) const;
     };
 }

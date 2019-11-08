@@ -126,5 +126,10 @@ namespace dis
         }
     }
 
+    DocId ReutersArticle::get_docId() const
+    {
+        return m_docId;
+    }
+
 
 }

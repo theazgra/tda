@@ -20,5 +20,7 @@ namespace dis
         void dump_index(const char* path);
         void load_index(const char* path);
 
+        void save_preprocessed_documents(const char* path);
+
     };
 }

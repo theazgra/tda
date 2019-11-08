@@ -11,10 +11,11 @@ namespace dis
     {
         const auto stopwords = strings_to_views(azgra::io::read_lines(stopwordFile));
 
+        DocId docId = 0;
         m_sgmlFiles.resize(m_inputFilePaths.size());
         for (size_t fileIndex = 0; fileIndex < m_inputFilePaths.size(); ++fileIndex)
         {
-            m_sgmlFiles[fileIndex] = SgmlFile::load(m_inputFilePaths[fileIndex]);
+            m_sgmlFiles[fileIndex] = SgmlFile::load(m_inputFilePaths[fileIndex], docId);
             m_sgmlFiles[fileIndex].preprocess_article_text(stopwords);
             m_sgmlFiles[fileIndex].destroy_original_text();
         }
@@ -75,6 +76,21 @@ namespace dis
         mapPairs = azgra::io::parse_by_lines(path, fn);
         m_index = TermIndex(mapPairs.begin(), mapPairs.end());
         fprintf(stdout, "%lu\n", mapPairs.size());
+    }
+
+    void SgmlFileCollection::save_preprocessed_documents(const char *path)
+    {
+        std::ofstream fStream(path, std::ios::out);
+        always_assert(fStream.is_open());
+
+        for (auto &sgmlFile : m_sgmlFiles)
+        {
+            for (auto &article : sgmlFile.get_articles())
+            {
+                fStream << "DocId:" << article.get_docId() << '\n';
+                fStream << article.get_processed_string() << '\n';
+            }
+        }
     }
 
 }
