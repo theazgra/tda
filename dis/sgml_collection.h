@@ -10,17 +10,26 @@ namespace dis
         std::set<DocId> documents;
     };
 
+    enum QueryTermType
+    {
+        AND,
+        OR,
+        NOT
+    };
+
     struct SizedIndexEntry
     {
         std::set<DocId> documents;
         size_t size;
+        QueryTermType type;
 
         SizedIndexEntry() = default;
 
-        explicit SizedIndexEntry(const std::set<DocId> &_documents)
+        explicit SizedIndexEntry(const std::set<DocId> &_documents, QueryTermType termType)
         {
             documents = _documents;
             size = documents.size();
+            type = termType;
         }
 
         bool operator<(const SizedIndexEntry &other) const
@@ -50,7 +59,7 @@ namespace dis
 
         void save_preprocessed_documents(const char *path);
 
-        QueryResult query(azgra::string::SmartStringView<char> &queryText) const;
+        QueryResult query(azgra::string::SmartStringView<char> &queryText, const bool verbose) const;
 
     };
 }

@@ -92,7 +92,7 @@ namespace dis
         }
     }
 
-    QueryResult SgmlFileCollection::query(azgra::string::SmartStringView<char> &queryText) const
+    QueryResult SgmlFileCollection::query(azgra::string::SmartStringView<char> &queryText, const bool verbose) const
     {
         QueryResult result = {};
         if (queryText.is_empty())
@@ -110,13 +110,31 @@ namespace dis
         std::vector<SizedIndexEntry> indexEntries;
         for (const auto &keyword : keywords)
         {
+//            QueryTermType tt = QueryTermType::AND;
+//            size_t fromIndex = 0;
+//            if (keyword.starts_with('-'))
+//            {
+//                tt = QueryTermType::NOT;
+//                fromIndex = 1;
+//            }
+//            else if (keyword.starts_with('|'))
+//            {
+//                tt = QueryTermType::OR;
+//                fromIndex = 1;
+//            }
 
             AsciiString str = stem_word(keyword.data(), keyword.length());
             const std::string key = std::string(str.get_c_string());
             if (keyword.is_empty() || (m_index.find(key) == m_index.end()))
                 continue;
 
-            indexEntries.push_back(SizedIndexEntry(m_index.at(key))); // NOLINT(hicpp-use-emplace,modernize-use-emplace)
+            indexEntries.push_back(SizedIndexEntry(m_index.at(key), QueryTermType::OR)); // NOLINT(hicpp-use-emplace,modernize-use-emplace)
+        }
+
+        if (indexEntries.empty())
+        {
+            azgra::print_if(verbose, "Query returned no results.\n");
+            return result;
         }
 
         std::sort(indexEntries.begin(), indexEntries.end());
@@ -138,6 +156,20 @@ namespace dis
             }
         }
         result.documents = std::set<DocId>(unionVector.begin(), unionVector.end());
+
+        if (verbose)
+        {
+            fprintf(stdout, "Query `%s` returned %lu documents\n", queryText.data(), result.documents.size());
+            std::stringstream docStream;
+
+            for (const auto& docId:result.documents)
+            {
+
+                docStream << docId << ',';
+            }
+            fprintf(stdout, "Documents:\n%s\n",  docStream.str().c_str());
+        }
+
         return result;
     }
 

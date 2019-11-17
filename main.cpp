@@ -29,17 +29,17 @@ int main(int argc, char **argv)
 {
     dis::SgmlFileCollection collection(ReutersFiles);
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm"});
-    //collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
+    //collection.load_and_preprocess_sgml_file:wqs("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     //collection.save_preprocessed_documents("processedDocuments.txt");
     //collection.create_term_index();
     //collection.dump_index("index.data");
     collection.load_index("index.data");
     azgra::string::SmartStringView<char> qt(argv[1]);
-    auto queryResult = collection.query(qt);
-
+    //azgra::string::SmartStringView<char> qt("part");
+    auto queryResult = collection.query(qt, true);
 
 //    collection.dump_index("index2.data");
-    fprintf(stdout, "Query: '%s' terms found in %lu documents.\n", qt.data(), queryResult.documents.size());
+    //fprintf(stdout, "Query: '%s' terms found in %lu documents.\n", qt.data(), queryResult.documents.size());
     return 0;
 #if 0
     if (argc == 2)
