@@ -1,10 +1,16 @@
 #pragma once
 
+#include <azgra/collection/set_utilities.h>
+#include <azgra/stream/memory_bit_stream.h>
 #include "SgmlFile.h"
 #include "term_index.h"
 
 namespace dis
 {
+    void test();
+
+    std::vector<size_t> generate_fibonacci_sequence(const size_t n);
+
     struct QueryResult
     {
         std::set<DocId> documents;
@@ -61,5 +67,6 @@ namespace dis
 
         QueryResult query(azgra::string::SmartStringView<char> &queryText, const bool verbose) const;
 
+        void dump_compressed_index(const char *path) const;
     };
 }

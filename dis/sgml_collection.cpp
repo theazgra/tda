@@ -1,7 +1,146 @@
+#include <azgra/collection/enumerable.h>
 #include "sgml_collection.h"
 
 namespace dis
 {
+    static std::vector<DocId> create_delta_vector(const std::vector<DocId> &documentSet)
+    {
+        std::vector<DocId> result(documentSet.size());
+
+        for (size_t i = 0; i < documentSet.size(); ++i)
+        {
+            if (i == 0)
+            {
+                result[i] = documentSet[i];
+            }
+            else
+            {
+                result[i] = documentSet[i] - documentSet[i - 1];
+            }
+        }
+        return result;
+    }
+
+    static std::vector<DocId> reconstruct_from_delta(const std::vector<DocId> &delta)
+    {
+        std::vector<DocId> result(delta.size());
+
+        for (size_t i = 0; i < delta.size(); ++i)
+        {
+            if (i == 0)
+            {
+                result[i] = delta[i];
+            }
+            else
+            {
+                result[i] = delta[i] + result[i-1];
+            }
+        }
+        return result;
+    }
+
+    static std::pair<size_t, size_t> largest_lte_fib_num_index(const std::vector<size_t> &fibSeq,
+                                                               const size_t target,
+                                                               const size_t maxExclusiveIndex)
+    {
+        always_assert(maxExclusiveIndex > 1);
+        for (auto i = static_cast<size_t>(maxExclusiveIndex - 1); i >= 0; --i)
+        {
+            if (fibSeq[i] <= target)
+            {
+                //return <value,index>
+                return std::make_pair(fibSeq[i], i);// (maxExclusiveIndex - 1 - i));
+            }
+        }
+        always_assert(false && "Didn't find fibonacci number!");
+        return std::make_pair(-1, -1);
+    }
+
+    static void encode_delta_with_fibonacci_sequence(azgra::OutMemoryBitStream &bitStream,
+                                                     const std::vector<DocId> &delta,
+                                                     const std::vector<size_t> &fibSeq)
+    {
+        for (const DocId &value : delta)
+        {
+            long remaining = static_cast<long> (value);
+            std::vector<size_t> fibIndicis;
+            size_t maxIndex = fibSeq.size();
+            while (remaining > 0)
+            {
+                auto[value, index] = largest_lte_fib_num_index(fibSeq, remaining, maxIndex);
+                fibIndicis.push_back(index);
+                remaining -= value;
+            }
+            //std::reverse(fibIndicis.begin(), fibIndicis.end());
+            const size_t maxFibIndex = azgra::collection::max(fibIndicis.begin(), fibIndicis.end());
+            for (size_t i = 0; i <= maxFibIndex; ++i)
+            {
+                // Index is set write 1
+                const bool bit = std::find(fibIndicis.begin(), fibIndicis.end(), i) != fibIndicis.end();
+                bitStream << bit;
+            }
+            // Write terminating 1.
+            bitStream << true;
+        }
+    }
+
+    static std::vector<DocId> decode_delta_from_fibonacci_sequence(azgra::InMemoryBitStream &bitStream,
+                                                                   std::vector<size_t> &fibSeq)
+    {
+
+        std::vector<DocId> delta;
+        bool prevWasOne = false;
+        std::vector<size_t> fibIndices;
+        long index = -1;
+        while (bitStream.can_read())
+        {
+            ++index;
+            if (bitStream.read_bit())   // 1
+            {
+                if (prevWasOne)
+                {
+                    // If previous was one reset here and decode from indices.
+
+                    size_t result = 0;
+                    for (const size_t &fibIndex : fibIndices)
+                    {
+                        result += fibSeq[fibIndex];
+                    }
+                    delta.push_back(result);
+
+                    index = -1;
+                    fibIndices.clear();
+                    prevWasOne = false;
+                }
+                else
+                {
+                    prevWasOne = true;
+                    fibIndices.push_back(index);
+                }
+            }
+            else                        // 0
+            {
+                prevWasOne = false;
+            }
+        }
+        return delta;
+    }
+
+
+    void test()
+    {
+        const auto delta = create_delta_vector({1, 20, 50, 100, 101, 200, 450, 813, 1568});
+        auto fibSeq = generate_fibonacci_sequence(40);
+        azgra::OutMemoryBitStream bitStream;
+        encode_delta_with_fibonacci_sequence(bitStream, delta, fibSeq);
+        auto buffer = bitStream.get_flushed_buffer();
+        azgra::InMemoryBitStream bitDecoderStream(&buffer);
+        auto decodedDelta = decode_delta_from_fibonacci_sequence(bitDecoderStream, fibSeq);
+        auto reconstructedOriginalValues = reconstruct_from_delta(decodedDelta);
+        const auto size = buffer.size();
+    }
+
+
     SgmlFileCollection::SgmlFileCollection(std::vector<const char *> sgmlFilePaths)
     {
         m_inputFilePaths = std::move(sgmlFilePaths);
@@ -162,15 +301,47 @@ namespace dis
             fprintf(stdout, "Query `%s` returned %lu documents\n", queryText.data(), result.documents.size());
             std::stringstream docStream;
 
-            for (const auto& docId:result.documents)
+            for (const auto &docId:result.documents)
             {
 
                 docStream << docId << ',';
             }
-            fprintf(stdout, "Documents:\n%s\n",  docStream.str().c_str());
+            fprintf(stdout, "Documents:\n%s\n", docStream.str().c_str());
         }
 
         return result;
     }
 
+    void SgmlFileCollection::dump_compressed_index(const char *string) const
+    {
+        auto fibSeq = generate_fibonacci_sequence(50);
+        // typedef std::map<std::string, std::set<DocId>> TermIndex;
+        for (const auto&[term, documentSet] : m_index)
+        {
+            azgra::OutMemoryBitStream bitStream;
+            std::vector<DocId> delta = create_delta_vector(azgra::collection::set_as_vector(documentSet));
+            encode_delta_with_fibonacci_sequence(bitStream, delta, fibSeq);
+
+
+        }
+    }
+
+
+    std::vector<size_t> generate_fibonacci_sequence(const size_t N)
+    {
+        int n = N + 1;
+        std::vector<size_t> fibN(N);
+        size_t a = 0;
+        size_t b = 1;
+        size_t i = 0;
+        while (n-- > 1)
+        {
+            size_t t = a;
+            a = b;
+            b += t;
+            fibN[i++] = b;
+        }
+        //return b;
+        return fibN;
+    }
 }
