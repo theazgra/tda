@@ -27,16 +27,19 @@
 
 int main(int argc, char **argv)
 {
-    dis::test();
-    return 0;
+    //dis::test();
+    //return 0;
     dis::SgmlFileCollection collection(ReutersFiles);
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm"});
-    //collection.load_and_preprocess_sgml_file:wqs("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
-    //collection.save_preprocessed_documents("processedDocuments.txt");
-    //collection.create_term_index();
-    //collection.dump_index("index.data");
-    collection.load_index("index.data");
-    collection.dump_compressed_index("index.data.fbenc");
+    //collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
+//    //collection.save_preprocessed_documents("processedDocuments.txt");
+//    collection.create_term_index();
+//    collection.dump_index("index.data");
+//    collection.load_index("index.data");
+//    collection.dump_compressed_index("index.fbenc");
+    collection.load_compressed_index("index.fbenc");
+    //collection.dump_index("decompressed_index.data");
+
     azgra::string::SmartStringView<char> qt(argv[1]);
     //azgra::string::SmartStringView<char> qt("part");
     auto queryResult = collection.query(qt, true);

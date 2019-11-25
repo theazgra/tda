@@ -33,7 +33,7 @@ namespace dis
             }
             else
             {
-                result[i] = delta[i] + result[i-1];
+                result[i] = delta[i] + result[i - 1];
             }
         }
         return result;
@@ -57,9 +57,21 @@ namespace dis
     }
 
     static void encode_delta_with_fibonacci_sequence(azgra::OutMemoryBitStream &bitStream,
+                                                     const std::string &term,
                                                      const std::vector<DocId> &delta,
                                                      const std::vector<size_t> &fibSeq)
     {
+        // Write term
+        const auto termLen = static_cast<azgra::u32>(term.length());
+        bitStream.write_value(termLen);
+        for (const char &c : term)
+        {
+            bitStream.write_value<azgra::byte>(c);
+        }
+        always_assert(delta.size() <= std::numeric_limits<azgra::u32>::max());
+        auto deltaSize = static_cast<azgra::u32> (delta.size());
+        bitStream.write_value(deltaSize);
+
         for (const DocId &value : delta)
         {
             long remaining = static_cast<long> (value);
@@ -71,7 +83,6 @@ namespace dis
                 fibIndicis.push_back(index);
                 remaining -= value;
             }
-            //std::reverse(fibIndicis.begin(), fibIndicis.end());
             const size_t maxFibIndex = azgra::collection::max(fibIndicis.begin(), fibIndicis.end());
             for (size_t i = 0; i <= maxFibIndex; ++i)
             {
@@ -84,61 +95,95 @@ namespace dis
         }
     }
 
-    static std::vector<DocId> decode_delta_from_fibonacci_sequence(azgra::InMemoryBitStream &bitStream,
-                                                                   std::vector<size_t> &fibSeq)
+    static std::vector<std::pair<std::string, std::vector<DocId>>>
+    decode_deltas_from_fibonacci_sequence(azgra::InMemoryBitStream &bitStream, std::vector<size_t> &fibSeq)
     {
-
-        std::vector<DocId> delta;
-        bool prevWasOne = false;
-        std::vector<size_t> fibIndices;
-        long index = -1;
-        while (bitStream.can_read())
+        std::vector<std::pair<std::string, std::vector<DocId>>> deltas;
+        auto termLen = bitStream.read_value<azgra::u32>();
+        std::vector<char> termData(termLen);
+        for (size_t i = 0; i < termLen; ++i)
         {
-            ++index;
-            if (bitStream.read_bit())   // 1
+            termData[i] = bitStream.read_value<azgra::byte>();
+        }
+        std::string term = std::string(termData.data(), termLen);
+
+        auto deltaSize = bitStream.read_value<azgra::u32>();
+        do
+        {
+
+            int deltaValueRemaining = deltaSize;
+            std::vector<DocId> delta;
+            bool prevWasOne = false;
+            std::vector<size_t> fibIndices;
+            long index = -1;
+
+            while (deltaValueRemaining)
             {
-                if (prevWasOne)
+                ++index;
+                if (bitStream.read_bit())   // 1
                 {
-                    // If previous was one reset here and decode from indices.
-
-                    size_t result = 0;
-                    for (const size_t &fibIndex : fibIndices)
+                    if (prevWasOne)
                     {
-                        result += fibSeq[fibIndex];
-                    }
-                    delta.push_back(result);
+                        // If previous was one reset here and decode from indices.
+                        size_t result = 0;
+                        for (const size_t &fibIndex : fibIndices)
+                        {
+                            result += fibSeq[fibIndex];
+                        }
+                        delta.push_back(result);
 
-                    index = -1;
-                    fibIndices.clear();
+                        --deltaValueRemaining;
+                        index = -1;
+                        fibIndices.clear();
+                        prevWasOne = false;
+                    }
+                    else
+                    {
+                        prevWasOne = true;
+                        fibIndices.push_back(index);
+                    }
+                }
+                else                        // 0
+                {
                     prevWasOne = false;
                 }
-                else
-                {
-                    prevWasOne = true;
-                    fibIndices.push_back(index);
-                }
             }
-            else                        // 0
+            always_assert (delta.size() == static_cast<size_t>(deltaSize));
+            deltas.emplace_back(term, delta);
+
+            termLen = bitStream.read_value<azgra::u32>();
+            if (termLen == 0)
             {
-                prevWasOne = false;
+                break;
             }
-        }
-        return delta;
+            termData.resize(termLen);
+            for (size_t i = 0; i < termLen; ++i)
+            {
+                termData[i] = bitStream.read_value<azgra::byte>();
+            }
+            term = std::string(termData.data(), termLen);
+            deltaSize = bitStream.read_value<azgra::u32>();
+        } while (deltaSize);
+        return deltas;
     }
 
-
-    void test()
-    {
-        const auto delta = create_delta_vector({1, 20, 50, 100, 101, 200, 450, 813, 1568});
-        auto fibSeq = generate_fibonacci_sequence(40);
-        azgra::OutMemoryBitStream bitStream;
-        encode_delta_with_fibonacci_sequence(bitStream, delta, fibSeq);
-        auto buffer = bitStream.get_flushed_buffer();
-        azgra::InMemoryBitStream bitDecoderStream(&buffer);
-        auto decodedDelta = decode_delta_from_fibonacci_sequence(bitDecoderStream, fibSeq);
-        auto reconstructedOriginalValues = reconstruct_from_delta(decodedDelta);
-        const auto size = buffer.size();
-    }
+//
+//    void test()
+//    {
+//        const auto delta = create_delta_vector({1, 20, 50, 100, 101, 200, 450, 813, 1568});
+//        const auto delta2 = create_delta_vector({2000, 2500, 3221});
+//        auto fibSeq = generate_fibonacci_sequence(40);
+//        azgra::OutMemoryBitStream bitStream;
+//        encode_delta_with_fibonacci_sequence(bitStream, "ahoj", delta, fibSeq);
+//        encode_delta_with_fibonacci_sequence(bitStream, "svete", delta2, fibSeq);
+//        bitStream.write_value<azgra::u32>(0);
+//
+//        auto buffer = bitStream.get_flushed_buffer();
+//        azgra::InMemoryBitStream bitDecoderStream(&buffer);
+//        auto decodedDeltas = decode_deltas_from_fibonacci_sequence(bitDecoderStream, fibSeq);
+//        //auto reconstructedOriginalValues = reconstruct_from_delta(decodedDeltas[0]);
+//        const auto size = buffer.size();
+//    }
 
 
     SgmlFileCollection::SgmlFileCollection(std::vector<const char *> sgmlFilePaths)
@@ -150,7 +195,7 @@ namespace dis
     {
         const auto stopwords = strings_to_views(azgra::io::read_lines(stopwordFile));
 
-        DocId docId = 0;
+        DocId docId = 1;
         m_sgmlFiles.resize(m_inputFilePaths.size());
         for (size_t fileIndex = 0; fileIndex < m_inputFilePaths.size(); ++fileIndex)
         {
@@ -193,6 +238,7 @@ namespace dis
 
     void SgmlFileCollection::load_index(const char *path)
     {
+        m_index.clear();
         std::vector<std::pair<std::string, std::set<DocId>>> mapPairs;
         std::function<std::pair<std::string, std::set<DocId>>(const azgra::string::SmartStringView<char> &)> fn =
                 [](const azgra::string::SmartStringView<char> &line)
@@ -265,7 +311,18 @@ namespace dis
             AsciiString str = stem_word(keyword.data(), keyword.length());
             const std::string key = std::string(str.get_c_string());
             if (keyword.is_empty() || (m_index.find(key) == m_index.end()))
-                continue;
+            {
+                azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Red, "Term %s is not found in any documents.\n",
+                                       keyword.data());
+                return result;
+            }
+            else
+            {
+                azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Cyan, "Term %s is found in %lu documents.\n",
+                                       keyword.data(),m_index.at(key).size());
+
+            }
+
 
             indexEntries.push_back(SizedIndexEntry(m_index.at(key), QueryTermType::OR)); // NOLINT(hicpp-use-emplace,modernize-use-emplace)
         }
@@ -312,17 +369,35 @@ namespace dis
         return result;
     }
 
-    void SgmlFileCollection::dump_compressed_index(const char *string) const
+    void SgmlFileCollection::dump_compressed_index(const char *filePath) const
     {
         auto fibSeq = generate_fibonacci_sequence(50);
-        // typedef std::map<std::string, std::set<DocId>> TermIndex;
+        azgra::OutMemoryBitStream bitStream;
         for (const auto&[term, documentSet] : m_index)
         {
-            azgra::OutMemoryBitStream bitStream;
-            std::vector<DocId> delta = create_delta_vector(azgra::collection::set_as_vector(documentSet));
-            encode_delta_with_fibonacci_sequence(bitStream, delta, fibSeq);
+            auto documentVector = azgra::collection::set_as_vector(documentSet);
+            std::sort(documentVector.begin(), documentVector.end());
+            auto deltaVector = create_delta_vector(documentVector);
+            encode_delta_with_fibonacci_sequence(bitStream, term, deltaVector, fibSeq);
+        }
+        bitStream.write_value<azgra::u32>(0);
+        const auto buffer = bitStream.get_flushed_buffer();
+        azgra::io::dump_bytes(buffer, filePath);
+    }
 
+    void SgmlFileCollection::load_compressed_index(const char *filePath)
+    {
+        auto fibSeq = generate_fibonacci_sequence(50);
+        azgra::InBinaryFileStream compressedIndexBinaryStream(filePath);
+        const auto buffer = compressedIndexBinaryStream.consume_whole_file();
+        azgra::InMemoryBitStream bitStream(&buffer);
+        const auto decompressedIndexPairs = decode_deltas_from_fibonacci_sequence(bitStream, fibSeq);
 
+        m_index.clear();
+        for (const auto&[term, deltaVector] : decompressedIndexPairs)
+        {
+            const auto documentIds = azgra::collection::vector_as_set(reconstruct_from_delta(deltaVector));
+            m_index[term] = documentIds;
         }
     }
 

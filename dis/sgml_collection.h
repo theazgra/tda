@@ -1,5 +1,7 @@
 #pragma once
 
+#include <azgra/io/binary_file_functions.h>
+#include <azgra/stream/in_binary_file_stream.h>
 #include <azgra/collection/set_utilities.h>
 #include <azgra/stream/memory_bit_stream.h>
 #include "SgmlFile.h"
@@ -67,6 +69,8 @@ namespace dis
 
         QueryResult query(azgra::string::SmartStringView<char> &queryText, const bool verbose) const;
 
-        void dump_compressed_index(const char *path) const;
+        void dump_compressed_index(const char *filePath) const;
+
+        void load_compressed_index(const char *filePath);
     };
 }
