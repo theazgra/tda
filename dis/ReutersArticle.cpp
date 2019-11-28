@@ -103,27 +103,71 @@ namespace dis
 
     void ReutersArticle::index_article_terms(TermIndex &index) const
     {
+        std::map<std::string, size_t> articleTerms;
+        std::string key;
+        for (const auto &word : m_processedWords)
+        {
+            if (!is_term(word))
+                continue;
+
+            key = std::string(word.string_view());
+            if (articleTerms.find(key) == articleTerms.end())
+            {
+                articleTerms[key] = 1;
+            }
+            else
+            {
+                articleTerms[key] += 1;
+            }
+        }
+
+        for (const auto&[key, occurenceCount] : articleTerms)
+        {
+            if (index.find(key) == index.end())
+            {
+                index[key] = {DocumentOccurence(m_docId, occurenceCount)};
+            }
+            else
+            {
+                index[key].insert(DocumentOccurence(m_docId, occurenceCount));
+            }
+        }
+#if 0
         std::string wordKey;
         for (const auto &word : m_processedWords)
         {
-            if (word.equals("pesodollar"))
-            {
-                fprintf(stdout, "bad word\n");
-            }
-
             if (!is_term(word))
                 continue;
 
             wordKey = std::string(word.string_view());
             if (index.find(wordKey) == index.end())
             {
-                index[wordKey] = {m_docId};
+                // Creating new key in map.
+                index[wordKey] = {m_docOccurence};
+                //index[wordKey] = {m_docId};
             }
             else
             {
-                index[wordKey].insert(m_docId);
+                // Key is already in map.
+
+                auto ocurrenceIt = index[wordKey].find(m_docOccurence);
+                // Wasnt yet found in this document.
+                if (ocurrenceIt == index[wordKey].end())
+                {
+                    // Key doesnt have entry of this document.
+                    index[wordKey].insert(m_docOccurence);
+                }
+                else
+                {
+                    // Key does have entry of this document.
+                    //(*index[wordKey].find(m_docOccurence)).occurenceCount++;
+                    //index[wordKey].insert(m_docId);
+                }
+
+
             }
         }
+#endif
     }
 
     DocId ReutersArticle::get_docId() const

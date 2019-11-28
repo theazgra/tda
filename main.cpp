@@ -25,24 +25,36 @@
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-020.sgm", \
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm" }
 
+#define ReutersFilesSmall { "/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-002.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-020.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm" }
+
 int main(int argc, char **argv)
 {
-    //dis::test();
-    //return 0;
-    dis::SgmlFileCollection collection(ReutersFiles);
-    //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm"});
-    //collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
+    dis::SgmlFileCollection collection(ReutersFilesSmall);
+    //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm"});
+    collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
+    collection.create_term_index_with_vector_model();
+    //collection.dump_index("simple_index.data");
+    //collection.load_index("index.data");
+//    collection.dump_term_frequency_matrix("term_frequency.matrix");
+//    collection.load_term_frequency_matrix("term_frequency.matrix");
+
 //    //collection.save_preprocessed_documents("processedDocuments.txt");
 //    collection.create_term_index();
 //    collection.dump_index("index.data");
-//    collection.load_index("index.data");
+
 //    collection.dump_compressed_index("index.fbenc");
-    collection.load_compressed_index("index.fbenc");
+    //collection.load_compressed_index("index.fbenc");
     //collection.dump_index("decompressed_index.data");
 
-    azgra::string::SmartStringView<char> qt(argv[1]);
-    //azgra::string::SmartStringView<char> qt("part");
-    auto queryResult = collection.query(qt, true);
+    azgra::BasicStringView<char> queryText(argv[1]);
+
+//    azgra::string::SmartStringView<char> ssw(queryText);
+//    auto queryResult = collection.query(ssw, true);
+
+    auto queryResult = collection.get_vector_model().query_documents(queryText);
 
 //    collection.dump_index("index2.data");
     //fprintf(stdout, "Query: '%s' terms found in %lu documents.\n", qt.data(), queryResult.documents.size());

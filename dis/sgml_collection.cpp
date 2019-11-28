@@ -56,7 +56,7 @@ namespace dis
         return std::make_pair(-1, -1);
     }
 
-    static void encode_delta_with_fibonacci_sequence(azgra::OutMemoryBitStream &bitStream,
+    static void encode_delta_with_fibonacci_sequence(azgra::io::stream::OutMemoryBitStream &bitStream,
                                                      const std::string &term,
                                                      const std::vector<DocId> &delta,
                                                      const std::vector<size_t> &fibSeq)
@@ -96,7 +96,7 @@ namespace dis
     }
 
     static std::vector<std::pair<std::string, std::vector<DocId>>>
-    decode_deltas_from_fibonacci_sequence(azgra::InMemoryBitStream &bitStream, std::vector<size_t> &fibSeq)
+    decode_deltas_from_fibonacci_sequence(azgra::io::stream::InMemoryBitStream &bitStream, std::vector<size_t> &fibSeq)
     {
         std::vector<std::pair<std::string, std::vector<DocId>>> deltas;
         auto termLen = bitStream.read_value<azgra::u32>();
@@ -203,23 +203,20 @@ namespace dis
             m_sgmlFiles[fileIndex].preprocess_article_text(stopwords);
             m_sgmlFiles[fileIndex].destroy_original_text();
         }
+        documentCount = docId-1;
+        fprintf(stdout, "Document count: %lu\n", documentCount);
     }
 
-    void SgmlFileCollection::extract_documents(const char *mergedDocumentFile)
-    {
-        // sgmlFile.save_preprocessed_text(outputFile, stopwordsFile);
-    }
-
-    void SgmlFileCollection::create_term_index()
+    void SgmlFileCollection::create_term_index_with_vector_model()
     {
         m_index.clear();
+
         for (const auto &sgmlFile : m_sgmlFiles)
         {
             sgmlFile.index_atricles(m_index);
         }
         fprintf(stdout, "Created index with %lu terms\n", m_index.size());
-        auto pair = *m_index.begin();
-
+        m_vectorModel = VectorModel(m_index, documentCount);
     }
 
     void SgmlFileCollection::dump_index(const char *path)
@@ -228,9 +225,9 @@ namespace dis
         for (const auto &term : m_index)
         {
             dump << term.first << ':';
-            for (const DocId docId : term.second)
+            for (const DocumentOccurence &docOcc : term.second)
             {
-                dump << docId << ",";
+                dump << docOcc.docId << ",";
             }
             dump << "\n";
         }
@@ -239,25 +236,25 @@ namespace dis
     void SgmlFileCollection::load_index(const char *path)
     {
         m_index.clear();
-        std::vector<std::pair<std::string, std::set<DocId>>> mapPairs;
-        std::function<std::pair<std::string, std::set<DocId>>(const azgra::string::SmartStringView<char> &)> fn =
+        std::vector<std::pair<std::string, std::set<DocumentOccurence>>> mapPairs;
+        std::function<std::pair<std::string, std::set<DocumentOccurence>>(const azgra::string::SmartStringView<char> &)> fn =
                 [](const azgra::string::SmartStringView<char> &line)
                 {
                     auto index = line.index_of(":");
                     std::string term = std::string(line.substring(0, index).string_view());
                     auto docIds = line.substring(index + 1).split(',');
-                    std::set<DocId> ids;
+                    std::set<DocumentOccurence> ids;
                     for (const auto dIdStr : docIds)
                     {
                         if (!dIdStr.is_empty())
                         {
-                            ids.insert(atol(dIdStr.data()));
+                            ids.insert(DocumentOccurence(atol(dIdStr.data()), 0));
                         }
                     }
                     return std::make_pair(term, ids);
                 };
 
-        mapPairs = azgra::io::parse_by_lines<std::pair<std::string, std::set<DocId>>>(path, fn);
+        mapPairs = azgra::io::parse_by_lines<std::pair<std::string, std::set<DocumentOccurence>>>(path, fn);
         m_index = TermIndex(mapPairs.begin(), mapPairs.end());
         fprintf(stdout, "%lu\n", mapPairs.size());
     }
@@ -295,36 +292,24 @@ namespace dis
         std::vector<SizedIndexEntry> indexEntries;
         for (const auto &keyword : keywords)
         {
-//            QueryTermType tt = QueryTermType::AND;
-//            size_t fromIndex = 0;
-//            if (keyword.starts_with('-'))
-//            {
-//                tt = QueryTermType::NOT;
-//                fromIndex = 1;
-//            }
-//            else if (keyword.starts_with('|'))
-//            {
-//                tt = QueryTermType::OR;
-//                fromIndex = 1;
-//            }
-
             AsciiString str = stem_word(keyword.data(), keyword.length());
             const std::string key = std::string(str.get_c_string());
             if (keyword.is_empty() || (m_index.find(key) == m_index.end()))
             {
                 azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Red, "Term %s is not found in any documents.\n",
-                                       keyword.data());
+                                       key.c_str());
                 return result;
             }
             else
             {
                 azgra::print_colorized(azgra::ConsoleColor::ConsoleColor_Cyan, "Term %s is found in %lu documents.\n",
-                                       keyword.data(),m_index.at(key).size());
+                                       key.c_str(), m_index.at(key).size());
 
             }
 
 
-            indexEntries.push_back(SizedIndexEntry(m_index.at(key), QueryTermType::OR)); // NOLINT(hicpp-use-emplace,modernize-use-emplace)
+            indexEntries.push_back(SizedIndexEntry(m_index.at(key))); // NOLINT(hicpp-use-emplace,
+            // modernize-use-emplace)
         }
 
         if (indexEntries.empty())
@@ -372,10 +357,13 @@ namespace dis
     void SgmlFileCollection::dump_compressed_index(const char *filePath) const
     {
         auto fibSeq = generate_fibonacci_sequence(50);
-        azgra::OutMemoryBitStream bitStream;
+        azgra::io::stream::OutMemoryBitStream bitStream;
         for (const auto&[term, documentSet] : m_index)
         {
-            auto documentVector = azgra::collection::set_as_vector(documentSet);
+            auto documentVector = azgra::collection::select(documentSet.begin(),
+                                                            documentSet.end(),
+                                                            [](const DocumentOccurence &occurence)
+                                                            { return occurence.docId; });
             std::sort(documentVector.begin(), documentVector.end());
             auto deltaVector = create_delta_vector(documentVector);
             encode_delta_with_fibonacci_sequence(bitStream, term, deltaVector, fibSeq);
@@ -387,20 +375,35 @@ namespace dis
 
     void SgmlFileCollection::load_compressed_index(const char *filePath)
     {
+        fprintf(stdout, "Loading compressed index...\n");
         auto fibSeq = generate_fibonacci_sequence(50);
-        azgra::InBinaryFileStream compressedIndexBinaryStream(filePath);
+        azgra::io::stream::InBinaryFileStream compressedIndexBinaryStream(filePath);
         const auto buffer = compressedIndexBinaryStream.consume_whole_file();
-        azgra::InMemoryBitStream bitStream(&buffer);
+        azgra::io::stream::InMemoryBitStream bitStream(&buffer);
+        fprintf(stdout, "Decoding delta values...\n");
         const auto decompressedIndexPairs = decode_deltas_from_fibonacci_sequence(bitStream, fibSeq);
 
         m_index.clear();
         for (const auto&[term, deltaVector] : decompressedIndexPairs)
         {
-            const auto documentIds = azgra::collection::vector_as_set(reconstruct_from_delta(deltaVector));
-            m_index[term] = documentIds;
+            const auto ids = reconstruct_from_delta(deltaVector);
+            const auto occurrencies = azgra::collection::select(ids.begin(), ids.end(),
+                                                                [](const DocId &docId)
+                                                                {
+                                                                    return DocumentOccurence(docId, 0);
+                                                                });
+            const auto documentIds = azgra::collection::vector_as_set(occurrencies);
+            m_index.emplace(term, documentIds);
+            //m_index[term] = documentIds;
         }
+        fprintf(stdout, "Loaded index with %lu terms.\n", m_index.size());
+
     }
 
+    VectorModel const &SgmlFileCollection::get_vector_model() const
+    {
+        return m_vectorModel;
+    }
 
     std::vector<size_t> generate_fibonacci_sequence(const size_t N)
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "term_index.h"
+#include <azgra/collection/enumerable.h>
 #include <azgra/string/smart_string_view.h>
 #include <sstream>
 #include <azgra/collection/vector_linq.h>
