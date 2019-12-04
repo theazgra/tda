@@ -400,7 +400,7 @@ namespace dis
 
     }
 
-    VectorModel const &SgmlFileCollection::get_vector_model() const
+    VectorModel &SgmlFileCollection::get_vector_model()
     {
         return m_vectorModel;
     }

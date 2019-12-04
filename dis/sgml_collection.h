@@ -45,7 +45,7 @@ namespace dis
         std::vector<const char *> m_inputFilePaths;
         std::vector<SgmlFile> m_sgmlFiles;
         TermIndex m_index;
-        size_t documentCount=0;
+        size_t documentCount = 0;
 
         VectorModel m_vectorModel;
 
@@ -68,6 +68,6 @@ namespace dis
 
         void load_compressed_index(const char *filePath);
 
-        VectorModel const &get_vector_model() const;
+        VectorModel &get_vector_model();
     };
 }

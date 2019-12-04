@@ -36,7 +36,9 @@ int main(int argc, char **argv)
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm"});
     collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     collection.create_term_index_with_vector_model();
-    //collection.dump_index("simple_index.data");
+//    collection.get_vector_model().save("vector_model.data");
+    //collection.get_vector_model().load("/mnt/d/codes/git/tda/cmake-build-release/vector_model.data");
+    //collection.dump_index("small_index.data");
     //collection.load_index("index.data");
 //    collection.dump_term_frequency_matrix("term_frequency.matrix");
 //    collection.load_term_frequency_matrix("term_frequency.matrix");
