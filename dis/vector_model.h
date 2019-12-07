@@ -21,6 +21,7 @@ namespace dis
 
         return result;
     }
+    
 
     struct DocumentScore
     {
@@ -63,7 +64,8 @@ namespace dis
 
         void calculate_term_frequency_weights(const std::vector<azgra::f32> &invDocFreq);
 
-        [[nodiscard]] std::vector<azgra::f32> create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const ;
+        [[nodiscard]] std::vector<std::pair<size_t,azgra::f32>> create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const ;
+        [[nodiscard]] azgra::f32 dot_with_term_pairs(const size_t docCol, const std::vector<std::pair<size_t, azgra::f32>> &vectorQueryTerm) const;
 
         void normalize_matrix(azgra::Matrix<azgra::f32> &matrix);
         void normalize_matrices();

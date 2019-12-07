@@ -30,13 +30,14 @@ namespace dis
 
     void VectorModel::create_term_frequency_matrix(const TermIndex &index)
     {
-        m_termFreq = azgra::Matrix<azgra::f32>(m_termCount, m_documentCount);
+        m_termFreq = azgra::Matrix<azgra::f32>(m_termCount, m_documentCount, 0.0f);
         size_t rowIndex = 0;
         for (const auto&[term, termOccurencies] : index)
         {
             m_terms[term] = rowIndex;
             for (const auto &termOccurence : termOccurencies)
             {
+                assert(termOccurence.occurenceCount >= 0 && "Term occurence is lower than 0");
                 m_termFreq.at(rowIndex, termOccurence.docId) = termOccurence.occurenceCount;
             }
             ++rowIndex;
@@ -61,14 +62,24 @@ namespace dis
 
     void VectorModel::calculate_term_frequency_weights(const std::vector<azgra::f32> &invDocFreq)
     {
+        float termFreqValue;
         // Spočítejte tf-idf váhy: tf-idf_t_d = tf_t_d * idf_t
         for (size_t termRow = 0; termRow < m_termFreq.rows(); ++termRow)
         {
             const azgra::f32 invTermDocFreq = invDocFreq[termRow];
             for (size_t docCol = 0; docCol < m_termFreq.cols(); ++docCol)
             {
+                termFreqValue = m_termFreq.at(termRow, docCol);
+                m_termFreqWeights.at(termRow, docCol) = termFreqValue == 0.0 ? 0.0 : (termFreqValue * invTermDocFreq);
 
-                m_termFreqWeights.at(termRow, docCol) = (m_termFreq.at(termRow, docCol) * invTermDocFreq);
+#if DEBUG
+                // DEBUG
+                if (isnan(m_termFreqWeights.at(termRow, docCol)))
+                {
+                    fprintf(stderr, "NaN in m_termFreqWeights at (%lu,%lu) m_termFreq value: %.4f invTermDocFreq value: %.4f\n",termRow,docCol, m_termFreq.at(termRow, docCol),invTermDocFreq);
+                    assert(false && "Found NaN value.");
+                }
+#endif
             }
         }
         fprintf(stdout, "Calculated term frequency weights \n");
@@ -77,6 +88,7 @@ namespace dis
 
     void VectorModel::normalize_matrix(azgra::Matrix<azgra::f32> &matrix)
     {
+        
         for (size_t col = 0; col < matrix.cols(); ++col)
         {
             azgra::f32 magnitude = 0.0;
@@ -84,7 +96,9 @@ namespace dis
             for (const azgra::f32 val : colValues)
             {
                 magnitude += pow(val, 2);
+                assert(!isnan(val) && "Value is NaN");
             }
+            assert(!isnan(magnitude) && "Magnitude is NaN");
             for (size_t row = 0; row < matrix.rows(); ++row)
             {
                 matrix.at(row, col) /= magnitude;
@@ -95,12 +109,26 @@ namespace dis
     void VectorModel::normalize_matrices()
     {
         // Normalizing of m_termFreq
+        fprintf(stdout, "Normalizing m_termFreq\n");
         normalize_matrix(m_termFreq);
 
         // Normalizing of m_termFreqWeights
+        fprintf(stdout, "Normalizing m_termFreqWeights\n");
         normalize_matrix(m_termFreqWeights);
 
         fprintf(stdout, "Normalized matrices...\n");
+    }
+
+    azgra::f32 VectorModel::dot_with_term_pairs(const size_t docCol, const std::vector<std::pair<size_t, azgra::f32>> &vectorQueryTerm) const
+    {
+        azgra::f32 result = 0.0;
+
+        for (const auto&[index, termValue] : vectorQueryTerm)
+        {
+            result += m_termFreqWeights.at(index, docCol) * termValue;
+        }
+
+        return result;        
     }
 
     std::vector<DocId> VectorModel::query_documents(const azgra::BasicStringView<char> &queryTxt) const
@@ -119,15 +147,14 @@ namespace dis
             return result;
         }
 
-
-
         const auto queryVector = create_normalized_query_vector(queryTxt);
 
         std::vector<DocumentScore> documentScore(m_documentCount);
+
         for (size_t docCol = 0; docCol < m_documentCount; ++docCol)
         {
-            const auto colValues = m_termFreqWeights.col(docCol);
-            const azgra::f32 dotResult = dot(colValues, queryVector);
+            //const auto colValues = m_termFreqWeights.col(docCol);
+            const azgra::f32 dotResult = dot_with_term_pairs(docCol, queryVector);
             documentScore[docCol] = DocumentScore(docCol, dotResult);
         }
 
@@ -213,12 +240,9 @@ namespace dis
         m_initialized = true;
     }
 
-    std::vector<azgra::f32> VectorModel::create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const
+    std::vector<std::pair<size_t, azgra::f32>> VectorModel::create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const
     {
-        // TODO(Moravec): Optimize with map.
-        std::vector<azgra::f32> queryVector(m_termCount);
         const auto keywords = azgra::string::SmartStringView(queryTxt).split(" ");
-        // TODO(Moravec): Check this
         size_t correctKeywordCount = azgra::collection::count_if(keywords.begin(), keywords.end(),
                                                                  [](const azgra::string::SmartStringView<char> &s)
                                                                  {
@@ -226,13 +250,14 @@ namespace dis
                                                                  });
         always_assert(correctKeywordCount <= keywords.size());
         const azgra::f32 denumerator = sqrt(static_cast<azgra::f32>(correctKeywordCount));
-
+        std::vector<std::pair<size_t, azgra::f32>> queryVector(correctKeywordCount);
+        int index = 0;
         for (const auto &keyword : keywords)
         {
             const AsciiString str = stem_word(keyword.data(), keyword.length());
             const std::string key = std::string(str.get_c_string());
             const size_t termIndex = m_terms.at(key);
-            queryVector[termIndex] = 1.0f / denumerator;
+            queryVector[index++] = std::make_pair(termIndex, (1.0f / denumerator));
         }
         return queryVector;
     }

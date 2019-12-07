@@ -26,19 +26,21 @@
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm" }
 
 #define ReutersFilesSmall { "/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm", \
-                            "/mnt/d/codes/git/tda/data/txtdata/reut2-002.sgm", \
-                            "/mnt/d/codes/git/tda/data/txtdata/reut2-020.sgm", \
-                            "/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm" }
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-002.sgm" }
 
 int main(int argc, char **argv)
 {
+#if !DEBUG
+    printf("RELEASE MODE\n");
+#endif
     dis::SgmlFileCollection collection(ReutersFilesSmall);
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm"});
     collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     collection.create_term_index_with_vector_model();
+    collection.dump_index
+    ("small_index.data");
 //    collection.get_vector_model().save("vector_model.data");
     //collection.get_vector_model().load("/mnt/d/codes/git/tda/cmake-build-release/vector_model.data");
-    //collection.dump_index("small_index.data");
     //collection.load_index("index.data");
 //    collection.dump_term_frequency_matrix("term_frequency.matrix");
 //    collection.load_term_frequency_matrix("term_frequency.matrix");
@@ -50,7 +52,6 @@ int main(int argc, char **argv)
 //    collection.dump_compressed_index("index.fbenc");
     //collection.load_compressed_index("index.fbenc");
     //collection.dump_index("decompressed_index.data");
-
     azgra::BasicStringView<char> queryText(argv[1]);
 
 //    azgra::string::SmartStringView<char> ssw(queryText);
