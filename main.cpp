@@ -26,6 +26,10 @@
                         "/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm" }
 
 #define ReutersFilesSmall { "/mnt/d/codes/git/tda/data/txtdata/reut2-000.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-004.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-005.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-006.sgm", \
+                            "/mnt/d/codes/git/tda/data/txtdata/reut2-007.sgm", \
                             "/mnt/d/codes/git/tda/data/txtdata/reut2-002.sgm" }
 
 int main(int argc, char **argv)
@@ -37,8 +41,7 @@ int main(int argc, char **argv)
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm"});
     collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     collection.create_term_index_with_vector_model();
-    collection.dump_index
-    ("small_index.data");
+    collection.dump_index("small_index.data");
 //    collection.get_vector_model().save("vector_model.data");
     //collection.get_vector_model().load("/mnt/d/codes/git/tda/cmake-build-release/vector_model.data");
     //collection.load_index("index.data");
