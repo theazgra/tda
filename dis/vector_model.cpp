@@ -4,6 +4,57 @@
 
 namespace dis
 {
+
+    ////////////////////////////// TermInfo implementation //////////////////////////////
+
+    void TermInfo::add_document_occurence(const DocumentOccurence &occurence)
+    {
+        termDocumentInfos[occurence.docId] = TermDocumentInfo(occurence.occurenceCount);
+    }
+
+    void TermInfo::add_to_magnitudes(std::vector<float> &occurenceMagnitude, std::vector<float> &weightMagnitude) const
+    {
+        for (const auto &[key, value] : termDocumentInfos)
+        {
+            occurenceMagnitude[key] += pow(value.count, 2);
+            weightMagnitude[key] += pow(value.weight, 2);
+        }
+    }
+
+    void TermInfo::apply_normalization(const std::vector<float> &occurenceMagnitude, const std::vector<float> &weightMagnitude)
+    {
+        for (auto &[key, value] : termDocumentInfos)
+        {
+#if DEBUG
+            assert(!isnan(occurenceMagnitude[key]) && "occurenceMagnitude is NaN");
+            assert(!isnan(weightMagnitude[key]) && "weightMagnitude is NaN");
+#endif
+            value.normalizedCount = static_cast<float>(value.count) / occurenceMagnitude[key];
+            value.normalizedWeight = static_cast<float>(value.weight) / weightMagnitude[key];
+        }
+    }
+
+    void TermInfo::calculate_document_weights()
+    {
+        for (auto &[key, value] : termDocumentInfos)
+        {
+            assert(value.count > 0);
+            //termFreqValue == 0.0 ? 0.0 : (termFreqValue * invTermDocFreq);
+            value.weight = static_cast<float>(value.count) * invDocFreq;
+        }
+    }
+
+    void TermInfo::fill_in_tf_matrices(const size_t row, azgra::Matrix<float> &termDocument_tf_mat, azgra::Matrix<float> &termDocument_tfidf_mat) const 
+    {
+        for (const auto&[docId, docTermInfo] : termDocumentInfos)
+        {
+            termDocument_tf_mat.at(row, docId) = docTermInfo.normalizedCount;
+            termDocument_tfidf_mat.at(row, docId) = docTermInfo.normalizedWeight;
+        }
+    }
+
+    ////////////////////////////// VectorModel implementation //////////////////////////////
+
     VectorModel::VectorModel(const TermIndex &index, const size_t documentCount)
     {
         m_documentCount = documentCount;
@@ -58,16 +109,15 @@ namespace dis
         fprintf(stdout, "Applied normalization to vector model...\n");
     }
 
-    azgra::f32 VectorModel::dot(const std::vector<azgra::f32> &a, const std::vector<azgra::f32> &b) const
+    azgra::f32 VectorModel::dot(const azgra::Matrix<float> &mat, const size_t col1, const size_t col2) const
     {
-        always_assert(a.size() == b.size());
+        always_assert(col1 < mat.cols() && col2 < mat.cols());
         azgra::f32 result = 0.0;
 
-        for (size_t i = 0; i < a.size(); ++i)
+        for (size_t row = 0; row < mat.rows(); row++)
         {
-            result += (a[i] * b[i]);
+            result += (mat.at(row, col1) * mat.at(row, col2));
         }
-
         return result;
     }
 
@@ -122,6 +172,73 @@ namespace dis
         fprintf(stdout, "\n%s\n", docStream.str().c_str());
 
         return result;
+    }
+
+    std::pair<DocId, DocId> VectorModel::find_most_similar_document(const size_t docId, 
+                                                                    const azgra::Matrix<float> &termDocument_tf_mat, 
+                                                                    const azgra::Matrix<float> &termDocument_tfidf_mat) const
+    {
+        float bestTfSimilarity = 0.0f;
+        float bestTfIdfSimilarity = 0.0f;
+        DocId tfDoc = 0,tfIdfDoc = 0;
+        float currentTfSimilarity, currentTfIdfSimilarity;
+        for (size_t otherDocId = 0; otherDocId < m_documentCount; otherDocId++)
+        {
+            if (otherDocId == docId)
+            {
+                continue;
+            }
+
+            currentTfSimilarity = dot(termDocument_tf_mat, docId, otherDocId);
+            currentTfIdfSimilarity = dot(termDocument_tfidf_mat, docId, otherDocId);
+
+            if (currentTfSimilarity > bestTfSimilarity)
+            {
+                bestTfSimilarity = currentTfSimilarity;
+                tfDoc = otherDocId;
+            }
+
+            if (currentTfIdfSimilarity > bestTfIdfSimilarity)
+            {
+                bestTfIdfSimilarity = currentTfIdfSimilarity;
+                tfIdfDoc = otherDocId;
+            }
+        }
+
+        return std::make_pair(tfDoc, tfIdfDoc);
+    }
+
+    void VectorModel::save_most_similar_documents(const char *tfSimilarityFile) const
+    {
+        // Create document-term matrix.
+        const size_t termCount = m_terms.size();
+       always_assert(m_termCount == termCount);
+
+        azgra::Matrix<float> termDocument_tf_mat(termCount, m_documentCount, 0.0);
+        azgra::Matrix<float> termDocument_tfidf_mat(termCount, m_documentCount, 0.0);
+
+        size_t rowIndex = 0;
+        for (const auto&[term, termInfo] : m_terms)
+        {
+            termInfo.fill_in_tf_matrices(rowIndex++, termDocument_tf_mat, termDocument_tfidf_mat);
+        }
+        fprintf(stdout, "Constructed term document matrices...\n");
+
+        std::ofstream resultStream(tfSimilarityFile, std::ios::out);
+        always_assert(resultStream.is_open());
+        resultStream << "Document;TF_MostSimilar;TF_IDF_MostSimilar" << '\n';
+
+//#pragma omp parallel for
+        for (size_t docId = 0; docId < m_documentCount; docId++)
+        {
+            auto [tfSimilar, tfidfSimilar] = find_most_similar_document(docId, termDocument_tf_mat, termDocument_tfidf_mat);   
+            resultStream << docId << ';' << tfSimilar << ';' << tfidfSimilar << '\n';
+
+            if (docId % 50 == 0)
+            {
+                fprintf(stdout, "Finished document %lu/%lu\n",docId, m_documentCount );
+            }
+        }
     }
 
     // void VectorModel::save(const char *filePath) const
