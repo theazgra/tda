@@ -36,7 +36,8 @@ int main(int argc, char **argv)
     //dis::SgmlFileCollection collection({"/mnt/d/codes/git/tda/data/txtdata/reut2-021.sgm"});
     collection.load_and_preprocess_sgml_files("/mnt/d/codes/git/tda/data/txtdata/stopwords.txt");
     collection.create_term_index_with_vector_model();
-    collection.get_vector_model().save_most_similar_documents("tf_similarity.csv");
+    //collection.get_vector_model().save_most_similar_documents("tf_similarity.csv");
+    collection.get_vector_model().clustering();
     return 0;
     // collection.dump_index("small_index.data");
 //    collection.get_vector_model().save("vector_model.data");

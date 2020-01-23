@@ -1,12 +1,13 @@
 #pragma once
 
+#include <omp.h>
 #include <azgra/matrix.h>
 #include <azgra/io/stream/out_binary_file_stream.h>
 #include <azgra/io/stream/in_binary_file_stream.h>
 #include <azgra/io/stream/in_binary_buffer_stream.h>
 #include <azgra/collection/enumerable.h>
 #include "term_index.h"
-
+#include "document_clusterer.h"
 namespace dis
 {
     struct DocumentScore
@@ -35,6 +36,15 @@ namespace dis
         }
     };
 
+    struct SimInfo
+    {
+        DocId d1;
+        DocId d2;
+
+        float sim1;
+        float sim2;
+    };
+
     struct TermDocumentInfo
     {
         size_t count{};
@@ -49,7 +59,7 @@ namespace dis
 
         }
 
-        
+
     };
 
 
@@ -68,7 +78,8 @@ namespace dis
 
         void calculate_document_weights();
 
-        void fill_in_tf_matrices(const size_t row, azgra::Matrix<float> &termDocument_tf_mat, azgra::Matrix<float> &termDocument_tfidf_mat) const;
+        void fill_in_tf_matrices(const size_t row, azgra::Matrix<float> &termDocument_tf_mat,
+                                 azgra::Matrix<float> &termDocument_tfidf_mat) const;
     };
 
     class VectorModel
@@ -83,14 +94,22 @@ namespace dis
 
         void initialize_term_info(const TermIndex &index);
 
-        [[nodiscard]] std::vector<std::pair<std::string, float>> create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const;
+        [[nodiscard]] std::vector<std::pair<std::string, float>>
+        create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const;
 
         [[nodiscard]] float dot(const azgra::Matrix<float> &mat, const size_t col1, const size_t col2) const;
-        void evaluate_vector_query(std::vector<DocumentScore> &scores, const std::vector<std::pair<std::string, float>> &vectorQueryTerm) const;
+
+        void
+        evaluate_vector_query(std::vector<DocumentScore> &scores, const std::vector<std::pair<std::string, float>> &vectorQueryTerm) const;
 
         void normalize_model();
 
-        std::pair<DocId, DocId> find_most_similar_document(const size_t docId, const azgra::Matrix<float> &termDocument_tf_mat, const azgra::Matrix<float> &termDocument_tfidf_mat) const;
+        SimInfo find_most_similar_document(const size_t docId, const azgra::Matrix<float> &termDocument_tf_mat, const azgra::Matrix<float>
+        &termDocument_tfidf_mat) const;
+
+        std::pair<azgra::Matrix<float>,azgra::Matrix<float>> reconstruct_tf_matrices() const;
+        azgra::Matrix<float> create_document_similarity_matrix(const azgra::Matrix<float> &tfMat) const;
+
 
     public:
         VectorModel() = default;
@@ -98,11 +117,10 @@ namespace dis
         explicit VectorModel(const TermIndex &index, const size_t documentCount);
 
         [[nodiscard]] std::vector<DocId> query_documents(const azgra::BasicStringView<char> &queryText) const;
-        
+
         void save_most_similar_documents(const char *tfSimilarityFile) const;
 
-        // void save(const char *filePath) const;
+        void clustering(const size_t k = 10);
 
-        // void load(const char *filePath);
     };
 }

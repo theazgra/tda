@@ -44,7 +44,8 @@ namespace dis
         }
     }
 
-    void TermInfo::fill_in_tf_matrices(const size_t row, azgra::Matrix<float> &termDocument_tf_mat, azgra::Matrix<float> &termDocument_tfidf_mat) const 
+    void TermInfo::fill_in_tf_matrices(const size_t row, azgra::Matrix<float> &termDocument_tf_mat,
+                                       azgra::Matrix<float> &termDocument_tfidf_mat) const
     {
         for (const auto&[docId, docTermInfo] : termDocumentInfos)
         {
@@ -75,7 +76,7 @@ namespace dis
         {
             totalTermOccurence = 0;
             m_terms[term] = TermInfo();
-            TermInfo &termInfo = m_terms.at(term); 
+            TermInfo &termInfo = m_terms.at(term);
             for (const auto &docOccurence : termOccurencies)
             {
                 if (docOccurence.occurenceCount > 0)
@@ -121,7 +122,8 @@ namespace dis
         return result;
     }
 
-    void VectorModel::evaluate_vector_query(std::vector<DocumentScore> &scores, const std::vector<std::pair<std::string, azgra::f32>> &vectorQueryTerm) const
+    void VectorModel::evaluate_vector_query(std::vector<DocumentScore> &scores,
+                                            const std::vector<std::pair<std::string, azgra::f32>> &vectorQueryTerm) const
     {
         for (const auto &[term, termQueryValue] : vectorQueryTerm)
         {
@@ -129,7 +131,7 @@ namespace dis
             for (const auto &[docId, termDocInfo] : termInfo.termDocumentInfos)
             {
                 scores[docId].score += (termDocInfo.normalizedWeight * termQueryValue);
-            } 
+            }
         }
     }
 
@@ -155,7 +157,7 @@ namespace dis
         {
             documentScore[docId].documentId = docId;
         }
-        
+
         evaluate_vector_query(documentScore, queryVector);
 
 
@@ -174,13 +176,13 @@ namespace dis
         return result;
     }
 
-    std::pair<DocId, DocId> VectorModel::find_most_similar_document(const size_t docId, 
-                                                                    const azgra::Matrix<float> &termDocument_tf_mat, 
-                                                                    const azgra::Matrix<float> &termDocument_tfidf_mat) const
+    SimInfo VectorModel::find_most_similar_document(const size_t docId,
+                                                    const azgra::Matrix<float> &termDocument_tf_mat,
+                                                    const azgra::Matrix<float> &termDocument_tfidf_mat) const
     {
         float bestTfSimilarity = 0.0f;
         float bestTfIdfSimilarity = 0.0f;
-        DocId tfDoc = 0,tfIdfDoc = 0;
+        DocId tfDoc = 0, tfIdfDoc = 0;
         float currentTfSimilarity, currentTfIdfSimilarity;
         for (size_t otherDocId = 0; otherDocId < m_documentCount; otherDocId++)
         {
@@ -205,17 +207,19 @@ namespace dis
             }
         }
 
-        return std::make_pair(tfDoc, tfIdfDoc);
+        SimInfo info = {};
+        info.d1 = tfDoc;
+        info.d2 = tfIdfDoc;
+        info.sim1 = bestTfSimilarity;
+        info.sim2 = bestTfIdfSimilarity;
+        return info;
+        //return std::make_pair(tfDoc, tfIdfDoc);
     }
 
-    void VectorModel::save_most_similar_documents(const char *tfSimilarityFile) const
+    std::pair<azgra::Matrix<float>, azgra::Matrix<float>> VectorModel::reconstruct_tf_matrices() const
     {
-        // Create document-term matrix.
-        const size_t termCount = m_terms.size();
-       always_assert(m_termCount == termCount);
-
-        azgra::Matrix<float> termDocument_tf_mat(termCount, m_documentCount, 0.0);
-        azgra::Matrix<float> termDocument_tfidf_mat(termCount, m_documentCount, 0.0);
+        azgra::Matrix<float> termDocument_tf_mat(m_termCount, m_documentCount, 0.0);
+        azgra::Matrix<float> termDocument_tfidf_mat(m_termCount, m_documentCount, 0.0);
 
         size_t rowIndex = 0;
         for (const auto&[term, termInfo] : m_terms)
@@ -223,78 +227,74 @@ namespace dis
             termInfo.fill_in_tf_matrices(rowIndex++, termDocument_tf_mat, termDocument_tfidf_mat);
         }
         fprintf(stdout, "Constructed term document matrices...\n");
+        return std::make_pair(termDocument_tf_mat, termDocument_tfidf_mat);
+    }
+
+    void VectorModel::save_most_similar_documents(const char *tfSimilarityFile) const
+    {
+        // Create document-term matrix.
+        const size_t termCount = m_terms.size();
+        always_assert(m_termCount == termCount);
+
+        auto[termDocument_tf_mat, termDocument_tfidf_mat] = reconstruct_tf_matrices();
+
+//        azgra::Matrix<float> termDocument_tf_mat(termCount, m_documentCount, 0.0);
+//        azgra::Matrix<float> termDocument_tfidf_mat(termCount, m_documentCount, 0.0);
+//
+//        size_t rowIndex = 0;
+//        for (const auto&[term, termInfo] : m_terms)
+//        {
+//            termInfo.fill_in_tf_matrices(rowIndex++, termDocument_tf_mat, termDocument_tfidf_mat);
+//        }
+//        fprintf(stdout, "Constructed term document matrices...\n");
 
         std::ofstream resultStream(tfSimilarityFile, std::ios::out);
         always_assert(resultStream.is_open());
-        resultStream << "Document;TF_MostSimilar;TF_IDF_MostSimilar" << '\n';
+        resultStream << "Document;TF_MostSimilar;Sim;TF_IDF_MostSimilar;Sim" << '\n';
 
 //#pragma omp parallel for
         for (size_t docId = 0; docId < m_documentCount; docId++)
         {
-            auto [tfSimilar, tfidfSimilar] = find_most_similar_document(docId, termDocument_tf_mat, termDocument_tfidf_mat);   
-            resultStream << docId << ';' << tfSimilar << ';' << tfidfSimilar << '\n';
+            //auto [tfSimilar, tfidfSimilar] = find_most_similar_document(docId, termDocument_tf_mat, termDocument_tfidf_mat);
+            SimInfo si = find_most_similar_document(docId, termDocument_tf_mat, termDocument_tfidf_mat);
+            resultStream << docId << ';' << si.d1 << ';' << si.sim1 << ';' << si.d2 << ';' << si.sim2 << '\n';
 
             if (docId % 50 == 0)
             {
-                fprintf(stdout, "Finished document %lu/%lu\n",docId, m_documentCount );
+                fprintf(stdout, "Finished document %lu/%lu\n", docId, m_documentCount);
             }
         }
     }
 
-    // void VectorModel::save(const char *filePath) const
-    // {
-    //     azgra::io::stream::OutBinaryFileStream str(filePath);
-    //     str.write_ulong64(m_documentCount);
-    //     str.write_ulong64(m_termCount);
+    azgra::Matrix<float> VectorModel::create_document_similarity_matrix(const azgra::Matrix<float> &tfMat) const
+    {
+        azgra::Matrix<float> simMat(m_documentCount, m_documentCount, 0.0f);
+        omp_set_num_threads(10);
+#pragma omp parallel for
+        for (DocId docId = 0; docId < m_documentCount; docId++)
+        {
+            for (DocId docId2 = docId + 1; docId2 < m_documentCount; ++docId2)
+            {
+                const float sim = dot(tfMat, docId, docId2);
+                simMat.at(docId, docId2) = sim;
+                simMat.at(docId2, docId) = sim;
+            }
+        }
+        return simMat;
+    }
 
-    //     for (const auto &term : m_terms)
-    //     {
-    //         const size_t termLen = term.first.length();
-    //         str.write_ulong64(termLen);
-    //         str.write_bytes_from_buffer(term.first.data(), termLen);
-    //     }
-    //     // Just for checking
-    //     str.write_byte(0);
-    //     for (const azgra::f32 &value : m_termFreqWeights.get_data())
-    //     {
-    //         str.write_float(value);
-    //     }
-    //     // Just for checking
-    //     str.write_byte(0);
-    // }
+    void VectorModel::clustering(size_t k)
+    {
+        auto[termDocument_tf_mat, termDocument_tfidf_mat] = reconstruct_tf_matrices();
 
-    // void VectorModel::load(const char *filePath)
-    // {
-    //     azgra::io::stream::InBinaryFileStream str(filePath);
-    //     m_documentCount = str.consume_ulong64();
-    //     m_termCount = str.consume_ulong64();
+        //auto docSimMat = create_document_similarity_matrix(termDocument_tf_mat);
+        fprintf(stdout, "Created similarity matrix.\n");
+        DocumentClusterer clusterer(termDocument_tf_mat, k);
+        clusterer.clusterize();
+    }
 
-    //     for (size_t tId = 0; tId < m_termCount; ++tId)
-    //     {
-    //         const size_t termLen = str.consume_ulong64();
-    //         const auto termBytes = str.consume_bytes(termLen);
-    //         always_assert(termLen == termBytes.size());
-    //         std::string term((const char *) termBytes.data(), termLen);
-    //         m_terms[term] = tId;
-    //     }
-
-    //     const azgra::byte check1 = str.consume_byte();
-    //     always_assert(check1 == 0);
-
-    //     const size_t floatValueCount = m_termCount * m_documentCount;
-    //     const size_t readSize = floatValueCount * sizeof(azgra::f32);
-    //     const auto matrixData = str.consume_bytes(readSize);
-
-    //     std::vector<azgra::f32> values(floatValueCount);
-    //     memcpy(values.data(), matrixData.data(), readSize);
-
-    //     m_termFreqWeights = azgra::Matrix<azgra::f32>(m_termCount, m_documentCount, values);
-    //     const azgra::byte check2 = str.consume_byte();
-    //     always_assert(check2 == 0);
-    //     m_initialized = true;
-    // }
-
-    std::vector<std::pair<std::string, azgra::f32>> VectorModel::create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const
+    std::vector<std::pair<std::string, azgra::f32>>
+    VectorModel::create_normalized_query_vector(const azgra::BasicStringView<char> &queryTxt) const
     {
         const auto keywords = azgra::string::SmartStringView(queryTxt).split(" ");
         size_t correctKeywordCount = azgra::collection::count_if(keywords.begin(), keywords.end(),
@@ -314,4 +314,6 @@ namespace dis
         }
         return queryVector;
     }
+
+
 }

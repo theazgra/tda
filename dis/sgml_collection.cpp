@@ -3,6 +3,7 @@
 
 namespace dis
 {
+
     static std::vector<DocId> create_delta_vector(const std::vector<DocId> &documentSet)
     {
         std::vector<DocId> result(documentSet.size());
